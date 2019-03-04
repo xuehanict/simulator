@@ -1,0 +1,110 @@
+{
+  "info": [
+    "ten nodes testcase：" ,
+    "1------2------3-----4-----5-----6                  ",
+    "              |           |     |                  ",
+    "              |           |     |                  ",
+    "              |           |     |                  ",
+    "             10-----9-----8-----7"
+  ],
+  "nodes": [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    },
+    {
+      "id": 3
+    },
+    {
+      "id": 4
+    },
+    {
+      "id": 5
+    },
+    {
+      "id": 6
+    },
+    {
+      "id": 7
+    },
+    {
+      "id": 8
+    },
+     {
+      "id": 9
+    },
+    {
+      "id": 10
+    }
+  ],
+  "edges": [
+    {
+      "node_1": 1,
+      "node_2": 2,
+      "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 2,
+      "node_2": 3,
+      "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 3,
+      "node_2": 4,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 4,
+      "node_2": 5,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 5,
+      "node_2": 6,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 6,
+      "node_2": 7,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 7,
+      "node_2": 8,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 8,
+      "node_2": 9,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 9,
+      "node_2": 10,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 3,
+      "node_2": 10,
+       "capacity1": 100,
+      "capacity2": 100
+    },
+    {
+      "node_1": 5,
+      "node_2": 8,
+       "capacity1": 100,
+      "capacity2": 100
+    }
+  ]
+}
