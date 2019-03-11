@@ -138,6 +138,24 @@ func (r *SMRouter) onPayReq(req *payReq) {
 
 func (r *SMRouter) sendPayment (dest RouteID, amount float64) error{
 
+	splittedAmounts := randomPartition(amount, len(r.Roots))
+	neighboursToSend := make([]RouteID, len(r.Roots))
+
 	return nil
 }
+
+func (r *SMRouter) getNeighboursToSend (dest RouteID) []RouteID{
+
+
+	return nil
+}
+
+
+
+
+
+
+
+
+
 
