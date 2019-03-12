@@ -55,25 +55,9 @@ func GetRandomString(l int) string {
 	return string(result)
 }
 
-// speedyMurmurs中用到的计算距离的方式
-func getDisSM(neighbour, dest string, lengthInterval int) float64 {
-	cpl := 0
-	depth := len(neighbour) / lengthInterval
-	destLen := len(dest) / lengthInterval
-	neiBytes := []byte(neighbour)
-	destBytes := []byte(dest)
-	for ; cpl < depth && cpl < destLen &&
-		bytes.Equal(neiBytes[0:lengthInterval],
-			destBytes[0:lengthInterval]); cpl++ {
-		neiBytes = neiBytes[lengthInterval:]
-		destBytes = neiBytes[lengthInterval:]
-	}
-
-	return -float64(cpl) - 1/float64(depth+1+destLen)
-}
 
 // silentWhisper中用到的计算距离的方式
-func getDisSW(neighbour, dest string, lenthInterval int) int {
+func getDis(neighbour, dest string, lenthInterval int) int {
 	depthN := len(neighbour) / lenthInterval
 	depthD := len(dest) / lenthInterval
 	cpl := 0

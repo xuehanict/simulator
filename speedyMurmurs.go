@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 )
 
 type RouteID int
@@ -12,7 +13,7 @@ type SMRouter struct {
 	AddrWithRoots map[RouteID]string
 	Roots         []RouteID
 	Neighbours    map[RouteID]struct{}
-	RouteBase     map[RouteID]*SMRouter
+	RouterBase     map[RouteID]*SMRouter
 	LinkBase      map[string]*Link
 	MsgPool       chan interface{}
 	quit          chan struct{}
@@ -92,7 +93,7 @@ func (r *SMRouter) stop() {
 }
 
 func (r *SMRouter) sendMsg(id RouteID, msg interface{}) {
-	r.RouteBase[id].MsgPool <- msg
+	r.RouterBase[id].MsgPool <- msg
 }
 
 func (r *SMRouter) onMsg(msg interface{}) {
@@ -140,19 +141,43 @@ func (r *SMRouter) sendPayment (dest RouteID, amount float64) error{
 
 	splittedAmounts := randomPartition(amount, len(r.Roots))
 	neighboursToSend := make([]RouteID, len(r.Roots))
-
+	for i, root := range r.Roots {
+		neighboursToSend[i] = r.getNeighbourToSend(root, dest, splittedAmounts[i])
+	}
 	return nil
 }
 
-func (r *SMRouter) getNeighboursToSend (dest RouteID) []RouteID{
-
-
-	return nil
+/**
+基于以root为根的生成树，获取到dest的邻居下一跳.
+目前的模拟是直接获取邻居的地址，实际场景下应该需要从邻居临时fetch过来
+ */
+func (r *SMRouter) getNeighbourToSend (root, dest RouteID, amount float64) RouteID{
+	minDis := math.MaxInt32
+	var minNeighbour RouteID
+	for n := range r.Neighbours {
+		tmpAddr := r.RouterBase[n].AddrWithRoots[root]
+		tmpDist := getDis(
+			tmpAddr,
+			r.RouterBase[dest].AddrWithRoots[root], 4)
+		linkValue := 0.0
+		if r.ID < n {
+			link, ok := r.LinkBase[getLinkKey(r.ID, n)]
+			if ok {
+				linkValue = link.val1
+			}
+		} else {
+			link, ok := r.LinkBase[getLinkKey(n, r.ID)]
+			if ok {
+				linkValue = link.val2
+			}
+		}
+		if tmpDist < minDis && amount < linkValue{
+			minDis = tmpDist
+			minNeighbour = n
+		}
+	}
+	return minNeighbour
 }
-
-
-
-
 
 
 
