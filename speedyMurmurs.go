@@ -49,6 +49,7 @@ type probeInfo struct {
 	 nextHop RouteID
 	 upperHop RouteID
 	 root RouteID
+	 destAddr string
 }
 
 /*************消息的多个类型*************/
@@ -94,7 +95,7 @@ type addrUpdate struct {
  */
 type payment struct {
 	requestID RequestID
-	value int
+	root RouteID
 }
 
 /*************************************/
@@ -172,6 +173,20 @@ func (r *SMRouter) onPayReq(req *payReq) {
 			 val: req.value,
 			 root: req.root,
 		}
+		newProbe := &probeInfo{
+			value: req.value,
+			requestID: req.requestID,
+			root: req.root,
+			time: time.Now().Unix(),
+			upperHop: req.upperHop,
+			destAddr: req.dest,
+		}
+		if _, ok := r.probeBase[req.requestID]; ok {
+			r.probeBase[req.requestID][req.root] = newProbe
+		} else {
+			r.probeBase[req.requestID] = make(map[RouteID]*probeInfo)
+			r.probeBase[req.requestID][req.root] = newProbe
+		}
 		r.sendMsg(req.upperHop, res)
 
 	} else {
@@ -180,7 +195,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 			// TODO(xuehan): add log
 			fmt.Printf("raise error:%v",err)
 		}
-		r.updateLinkValue(nextHop,req.value, SUB)
+		r.updateLinkValue(r.ID, nextHop,req.value, SUB)
 		req.upperHop = r.ID
 		newProbe := &probeInfo{
 			value: req.value,
@@ -189,6 +204,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 			time: time.Now().Unix(),
 			upperHop: req.upperHop,
 			nextHop: nextHop,
+			destAddr: req.dest,
 		}
 		if _, ok := r.probeBase[req.requestID]; ok {
 			r.probeBase[req.requestID][req.root] = newProbe
@@ -207,10 +223,18 @@ func (r *SMRouter) onPayRes(res *payRes)  {
 	} else {
 		if !res.success {
 			nextHop := probe.nextHop
-			r.updateLinkValue(nextHop,probe.value, ADD)
+			r.updateLinkValue(r.ID, nextHop,probe.value, ADD)
 		}
 		r.sendMsg(probe.upperHop, res)
 	}
+}
+
+func (r *SMRouter) onPayment (pay *payment) {
+	probe := r.probeBase[pay.requestID][pay.root]
+	if probe.destAddr != r.AddrWithRoots[pay.root] {
+		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
+	}
+	delete(r.probeBase[pay.requestID], pay.root)
 }
 
 func (r *SMRouter) sendPayment (dest RouteID, amount float64) error{
@@ -218,6 +242,7 @@ func (r *SMRouter) sendPayment (dest RouteID, amount float64) error{
 	splittedAmounts := randomPartition(amount, len(r.Roots))
 	neighboursToSend := make([]RouteID, len(r.Roots))
 	destAddr := r.RouterBase[dest].AddrWithRoots[dest]
+	requestID := RequestID(GetRandomString(PAYMENT_REQUESTID_LENGTH))
 	for i, root := range r.Roots {
 		nextHop, err  := r.getNeighbourToSend(root, destAddr, splittedAmounts[i])
 		if err != nil {
@@ -227,15 +252,50 @@ func (r *SMRouter) sendPayment (dest RouteID, amount float64) error{
 		// ps: 这里的地址是直接从dest节点中拿出的，实际场景应该从
 		payreq := &payReq{
 			sender: r.ID,
-			requestID: RequestID(GetRandomString(PAYMENT_REQUESTID_LENGTH)),
+			requestID: requestID,
 			value: splittedAmounts[i],
+			root: root,
 			dest: r.RouterBase[dest].AddrWithRoots[root],
+		}
+
+		newProbe := &probeInfo{
+			value: payreq.value,
+			requestID: requestID,
+			root: root,
+			time: time.Now().Unix(),
+			nextHop: nextHop,
+		}
+		if _, ok := r.probeBase[payreq.requestID]; ok {
+			r.probeBase[requestID][root] = newProbe
+		} else {
+			r.probeBase[requestID] = make(map[RouteID]*probeInfo)
+			r.probeBase[requestID][root] = newProbe
 		}
 		r.sendMsg(nextHop,payreq)
 	}
 
+	resArray := make([]*payRes,0)
+out:
+	for {
+		select {
+		case res := <- r.reqestPool[requestID]:
+			if res.success == false {
+				return fmt.Errorf("probe failed")
+			}
+			resArray = append(resArray, res)
+			if len(resArray) == len(r.Roots) { break out}
+		case <- time.After(2 * time.Second):
+			return fmt.Errorf("probe failed, timeout")
+		}
+	}
 
-
+	/**
+	probe 成功，现在开始进行支付，因为在probe的过程中已经减去了支付的那一笔钱，
+	因此在真正支付的过程中只需要将接受方的那一部分金额加上就可以了。
+	*/
+	for _, probe := range r.probeBase[requestID] {
+		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
+	}
 	return nil
 }
 
@@ -276,23 +336,24 @@ func (r *SMRouter) getNeighbourToSend (root RouteID, dest string,
 	return minNeighbour, nil
 }
 
-func (r *SMRouter)updateLinkValue(neighbour RouteID, value float64,
+func (r *SMRouter) updateLinkValue (from, to RouteID, value float64,
 	flag int)  {
-	if neighbour > r.ID {
-		linkKey := getLinkKey(r.ID, neighbour)
-		link := r.LinkBase[linkKey]
-		if flag == ADD {
-			link.val1 += value
-		} else {
-			link.val1 -= value
-		}
-	} else {
-		linkKey := getLinkKey(neighbour,r.ID)
+	if from > to {
+		linkKey := getLinkKey(to, from)
 		link := r.LinkBase[linkKey]
 		if flag == ADD {
 			link.val2 += value
 		} else {
 			link.val2 -= value
 		}
+	} else {
+		linkKey := getLinkKey(from, to)
+		link := r.LinkBase[linkKey]
+		if flag == ADD {
+			link.val1 += value
+		} else {
+			link.val1 -= value
+		}
 	}
 }
+
