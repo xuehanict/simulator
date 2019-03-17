@@ -4,33 +4,44 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"bytes"
+	"math/rand"
 )
 
 const (
-	ADD                      = 1
-	SUB                      = 0
+	ADD = 1
+	SUB = 0
+
 	PAYMENT_REQUESTID_LENGTH = 10
-	CLEAN_PROBE_INTERVAL     = 20
-	PROBE_STORE_TIME         = 3600
-	LINK_DIR_RIGHT 			 = true
-	LINK_DIR_LEFT 			 = false
+	ADDR_REQUESTID_LENGTH    = 10
+
+	CLEAN_PROBE_INTERVAL = 20
+	PROBE_STORE_TIME     = 3600
+
+	LINK_DIR_RIGHT = true
+	LINK_DIR_LEFT  = false
+
+	MSG_POOL_CAPCITY     = 10000
+	ADDR_POOL_CAPCITY    = 10000
+	PAYMENT_POOL_CAPCITY = 100
 )
 
 type RouteID int
 type RequestID string
 
 type SMRouter struct {
-	ID            RouteID
-	AddrWithRoots map[RouteID]addrType
-	Roots         []RouteID
-	Neighbours    map[RouteID]struct{}
-	RouterBase    map[RouteID]*SMRouter
-	reqestPool    map[RequestID]chan *payRes
-	probeBase     map[RequestID]map[RouteID]*probeInfo
-	LinkBase      map[string]*Link
-	MsgPool       chan interface{}
-	timer         *time.Ticker
-	quit          chan struct{}
+	ID              RouteID
+	AddrWithRoots   map[RouteID]*addrType
+	Roots           []RouteID
+	Neighbours      map[RouteID]struct{}
+	RouterBase      map[RouteID]*SMRouter
+	payRequestPool  map[RequestID]chan *payRes
+	addrRequestPool map[RequestID]chan *addrRes
+	probeBase       map[RequestID]map[RouteID]*probeInfo
+	LinkBase        map[string]*Link
+	MsgPool         chan interface{}
+	timer           *time.Ticker
+	quit            chan struct{}
 }
 
 /*
@@ -82,24 +93,6 @@ type payRes struct {
 }
 
 /**
-地址和root映射的map，在构建时交换
-*/
-type addrMap struct {
-	// 发送人的ID
-	router RouteID
-	// 关于每个树的root的id和其对应树中的地址
-	addrs map[RouteID]string
-}
-
-/**
-地址更新时交换的信息
-*/
-type addrUpdate struct {
-	preRouter RouteID
-
-}
-
-/**
 进行支付时,传递此消息
 */
 type payment struct {
@@ -108,11 +101,30 @@ type payment struct {
 }
 
 /**
-和邻居进行地址交换时的消息类型
- */
+和邻居进行地址交换时的请求消息类型
+*/
 type addrReq struct {
-	reqSrc RouteID
-	reqRoots map[RouteID]struct{}
+	reqSrc  RouteID
+	reqRoot RouteID
+	reqID   RequestID
+}
+
+/**
+和邻居进行地址交换时的回复消息类型
+*/
+type addrRes struct {
+	resSrc  RouteID
+	resRoot RouteID
+	reqID   RequestID
+	addr    string
+}
+
+/**
+通知邻居reset地址的消息类型
+ */
+type addrResetNoti struct {
+	root RouteID
+	src RouteID
 }
 
 /*************************************/
@@ -145,8 +157,14 @@ func (r *SMRouter) onMsg(msg interface{}) {
 		r.onPayReq(msg.(*payReq))
 	case *payRes:
 		r.onPayRes(msg.(*payRes))
-	case *addrMap:
-		//r.onAddrMap(msg.(*addrMap))
+	case *addrRes:
+		r.onResetAddrRes(msg.(*addrRes))
+	case *addrReq:
+		r.onResetAddrReq(msg.(*addrReq))
+	case *addrResetNoti:
+		r.onNotifyReset(msg.(*addrResetNoti))
+	case *payment:
+		r.onPayment(msg.(*payment))
 	}
 }
 
@@ -242,7 +260,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 func (r *SMRouter) onPayRes(res *payRes) {
 	probe := r.probeBase[res.requestID][res.root]
 	if res.sender == r.ID {
-		r.reqestPool[res.requestID] <- res
+		r.payRequestPool[res.requestID] <- res
 	} else {
 		if !res.success {
 			nextHop := probe.nextHop
@@ -304,7 +322,7 @@ func (r *SMRouter) sendPayment(dest RouteID, amount float64) error {
 out:
 	for {
 		select {
-		case res := <-r.reqestPool[requestID]:
+		case res := <-r.payRequestPool[requestID]:
 			if res.success == false {
 				return fmt.Errorf("probe failed")
 			}
@@ -338,7 +356,7 @@ func (r *SMRouter) getNeighbourToSend(root RouteID, dest string,
 	minNeighbour := RouteID(-1)
 	for n := range r.Neighbours {
 		tmpAddr := r.RouterBase[n].AddrWithRoots[root]
-		tmpDist := getDis(
+		tmpDist :=  getDis(
 			tmpAddr.addr,
 			dest, 4)
 		linkValue := 0.0
@@ -451,9 +469,9 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 // TODO(xuehan): 应该在真正支付时才被调用，所以update应该加个phase选项来区别对待。
 func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour RouteID) error {
 	// 用来标记当前活着的root
-	aliveRoots := make([]RouteID,0)
-	for _, id := range r.Roots{
-		if _, ok:= r.RouterBase[id]; ok {
+	aliveRoots := make([]RouteID, 0)
+	for _, id := range r.Roots {
+		if _, ok := r.RouterBase[id]; ok {
 			aliveRoots = append(aliveRoots, id)
 		}
 	}
@@ -481,12 +499,12 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 					return err
 				}
 				valFromParent, err := r.getLinkValue(
-					r.AddrWithRoots[aliveRoot].parent,LINK_DIR_LEFT)
+					r.AddrWithRoots[aliveRoot].parent, LINK_DIR_LEFT)
 				if err != nil {
 					return nil
 				}
 				if (valFromParent > 0 && valToParent == 0) ||
-					(valFromParent ==0 && valToParent >0 ) {
+					(valFromParent == 0 && valToParent > 0) {
 					reset[aliveRoot] = struct{}{}
 					continue
 				}
@@ -495,18 +513,22 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 
 		if oldValue > 0 && newValue == 0 {
 			if addr, ok := r.AddrWithRoots[aliveRoot]; ok && addr.parent == neighbour {
-				reset[aliveRoot] = struct {}{}
+				reset[aliveRoot] = struct{}{}
 			}
 		}
 	}
-	r.resetAddr(reset)
+	// 针对需要重构的地址，按root分别进行重构
+	for root := range reset {
+		r.resetAddr(root)
+	}
 	return nil
 }
 
+func (r *SMRouter) getLinkValue(neighbour RouteID, direction bool) (float64, error) {
 
-func (r *SMRouter) getLinkValue (neighbour RouteID, direction bool)(float64, error) {
-
-	if r.ID == neighbour {return 0, fmt.Errorf("cann't get link value to self")}
+	if r.ID == neighbour {
+		return 0, fmt.Errorf("cann't get link value to self")
+	}
 	if r.ID < neighbour {
 		linkKey := getLinkKey(r.ID, neighbour)
 		link, ok := r.LinkBase[linkKey]
@@ -526,7 +548,7 @@ func (r *SMRouter) getLinkValue (neighbour RouteID, direction bool)(float64, err
 			return 0, nil
 		} else {
 			if direction == LINK_DIR_RIGHT {
-				return  link.val2, nil
+				return link.val2, nil
 			} else {
 				return link.val1, nil
 			}
@@ -551,14 +573,103 @@ func (r *SMRouter) cleanProbe() {
 	}
 }
 
-func (r *SMRouter) resetAddr(addrWithRoots map[RouteID]struct{}) error {
+func (r *SMRouter) resetAddr(resetAddrRoot RouteID) error {
+	reqID := RequestID(GetRandomString(ADDR_REQUESTID_LENGTH))
 	for nei := range r.Neighbours {
 		r.sendMsg(nei, &addrReq{
-			reqSrc: r.ID,
-			reqRoots: addrWithRoots,
+			reqSrc:  r.ID,
+			reqRoot: resetAddrRoot,
+			reqID:   reqID,
+		})
+	}
+
+	uniLinkResponses := make([]*addrRes,0)
+	biLinkResponses	:= make([]*addrRes,0)
+	children := make([]RouteID,0)
+	resNum := 0
+out:
+	for {
+		select {
+		case res := <- r.addrRequestPool[reqID]:
+			resNum++
+			resSrc := res.resSrc
+			neiAddrBytes := []byte(res.addr)
+			selfAddrBytes := []byte(r.AddrWithRoots[resetAddrRoot].addr)
+			// 判断是否是孩子节点发来的，如果是，则忽略，并且添加到children中，以通知其
+			if bytes.Equal(selfAddrBytes,
+				neiAddrBytes[0:len(neiAddrBytes)-4]) {
+				children = append(children, res.resSrc)
+				if resNum == len(r.Neighbours) {
+					break out
+				}
+				continue
+			}
+			val1, err := r.getLinkValue(resSrc,LINK_DIR_RIGHT)
+			if err != nil {
+				//TODO(xuehan): log
+				fmt.Printf("faced error:%v", err)
+			}
+			val2, err := r.getLinkValue(resSrc,LINK_DIR_LEFT)
+			if err != nil {
+				//TODO(xuehan): log
+				fmt.Printf("faced error:%v", err)
+			}
+			if val2 > 0 && val1 > 0 {
+				biLinkResponses = append(biLinkResponses, res)
+			} else if (val2 > 0 && val1 ==0) || (val1 > 0 && val2 ==0) {
+				uniLinkResponses = append(uniLinkResponses, res)
+			}
+			if resNum == len(r.Neighbours) {
+				break out
+			}
+		case time.After(2 * time.Second):
+			break out
+		}
+	}
+
+	if len(biLinkResponses) != 0 {
+		idx := rand.Intn(len(biLinkResponses))
+		selectRes := biLinkResponses[idx]
+		r.AddrWithRoots[resetAddrRoot] = &addrType{
+			parent: selectRes.resSrc,
+			addr: selectRes.addr + GetRandomString(4),
+		}
+	} else if len(uniLinkResponses) != 0 {
+		idx := rand.Intn(len(uniLinkResponses))
+		selectRes := biLinkResponses[idx]
+		r.AddrWithRoots[resetAddrRoot] = &addrType{
+			parent: selectRes.resSrc,
+			addr: selectRes.addr + GetRandomString(4),
+		}
+	}
+	// 通知邻居重置地址
+	for _, child := range children {
+		r.sendMsg(child, &addrResetNoti{
+			src: r.ID,
+			root: resetAddrRoot,
 		})
 	}
 	return nil
+}
+
+func (r *SMRouter) onResetAddrReq(req *addrReq) {
+	res := &addrRes{
+		resSrc:  r.ID,
+		resRoot: req.reqRoot,
+		reqID:   req.reqID,
+		addr:    r.AddrWithRoots[req.reqRoot].addr,
+	}
+	r.sendMsg(req.reqSrc, res)
+}
+
+func (r *SMRouter) onResetAddrRes(res *addrRes) {
+	r.addrRequestPool[res.reqID] <- res
+}
+
+func (r *SMRouter) onNotifyReset(noti *addrResetNoti)  {
+	if r.AddrWithRoots[noti.root].parent == noti.src {
+		r.resetAddr(noti.root)
+	}
 }
 
 func NewSMRouter(id RouteID, roots []RouteID,
@@ -566,17 +677,18 @@ func NewSMRouter(id RouteID, roots []RouteID,
 	linkBase map[string]*Link) *SMRouter {
 
 	router := &SMRouter{
-		ID:            id,
-		AddrWithRoots: make(map[RouteID]addrType),
-		Roots:         roots,
-		Neighbours:    make(map[RouteID]struct{}),
-		RouterBase:    routerBase,
-		reqestPool:    make(map[RequestID]chan *payRes),
-		probeBase:     make(map[RequestID]map[RouteID]*probeInfo),
-		LinkBase:      linkBase,
-		MsgPool:       make(chan interface{}),
-		timer:         time.NewTicker(CLEAN_PROBE_INTERVAL * time.Second),
-		quit:          make(chan struct{}),
+		ID:              id,
+		AddrWithRoots:   make(map[RouteID]*addrType),
+		Roots:           roots,
+		Neighbours:      make(map[RouteID]struct{}),
+		RouterBase:      routerBase,
+		payRequestPool:  make(map[RequestID]chan *payRes, PAYMENT_POOL_CAPCITY),
+		addrRequestPool: make(map[RequestID]chan *addrRes, ADDR_POOL_CAPCITY),
+		probeBase:       make(map[RequestID]map[RouteID]*probeInfo),
+		LinkBase:        linkBase,
+		MsgPool:         make(chan interface{}, MSG_POOL_CAPCITY),
+		timer:           time.NewTicker(CLEAN_PROBE_INTERVAL * time.Second),
+		quit:            make(chan struct{}),
 	}
 	return router
 }
