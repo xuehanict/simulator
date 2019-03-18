@@ -1,4 +1,4 @@
-package main
+package speedymurmurs
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ func GetRandomString(l int) string {
 }
 
 
-// silentWhisper中用到的计算距离的方式
+// 用到的计算距离的方式
 func getDis(neighbour, dest string, lenthInterval int) int {
 	depthN := len(neighbour) / lenthInterval
 	depthD := len(dest) / lenthInterval
