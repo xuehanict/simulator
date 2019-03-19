@@ -1,4 +1,4 @@
-package main
+package speedymurmurs
 
 import (
 	"fmt"
@@ -71,63 +71,6 @@ type addrType struct {
 	parent RouteID
 }
 
-/*************消息的多个类型*************/
-/**
-交易请求信息
-*/
-type payReq struct {
-	requestID RequestID
-	root      RouteID
-	sender    RouteID
-	dest      string
-	value     float64
-	upperHop  RouteID
-}
-
-type payRes struct {
-	requestID RequestID
-	root      RouteID
-	sender    RouteID
-	success   bool
-	val       float64
-}
-
-/**
-进行支付时,传递此消息
-*/
-type payment struct {
-	requestID RequestID
-	root      RouteID
-}
-
-/**
-和邻居进行地址交换时的请求消息类型
-*/
-type addrReq struct {
-	reqSrc  RouteID
-	reqRoot RouteID
-	reqID   RequestID
-}
-
-/**
-和邻居进行地址交换时的回复消息类型
-*/
-type addrRes struct {
-	resSrc  RouteID
-	resRoot RouteID
-	reqID   RequestID
-	addr    string
-}
-
-/**
-通知邻居reset地址的消息类型
- */
-type addrResetNoti struct {
-	root RouteID
-	src RouteID
-}
-
-/*************************************/
 
 func (r *SMRouter) start() {
 	for {
@@ -273,7 +216,17 @@ func (r *SMRouter) onPayRes(res *payRes) {
 func (r *SMRouter) onPayment(pay *payment) {
 	probe := r.probeBase[pay.requestID][pay.root]
 	if probe.destAddr != r.AddrWithRoots[pay.root].addr {
+		remoteOldVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
 		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
+		remoteNewVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
+		// 让远程节点检查是否需要重构
+		r.RouterBase[probe.nextHop].monitorLinkChange(remoteOldVal, remoteNewVal, r.ID)
+
+		selfNewValue, _ := r.getLinkValue(probe.nextHop, LINK_DIR_RIGHT)
+		selfOldValue := selfNewValue - probe.value
+		// 本地节点检查是否需要重构
+		r.monitorLinkChange(selfOldValue, selfNewValue, probe.nextHop)
+
 	}
 	delete(r.probeBase[pay.requestID], pay.root)
 	if len(r.probeBase[pay.requestID]) == 0 {
@@ -386,12 +339,12 @@ func (r *SMRouter) getNeighbourToSend(root RouteID, dest string,
 func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 	flag int) {
 
-	var oldValue, newValue float64
+	//var oldValue, newValue float64
 	if from > to {
 		linkKey := getLinkKey(to, from)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
-			oldValue = link.val2
+			//oldValue = link.val2
 			if flag == ADD {
 				link.val2 += value
 			} else {
@@ -404,9 +357,9 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					return
 				}
 			}
-			newValue = link.val2
+			//newValue = link.val2
 		} else { // 如果link本身不存在，那么只能加不能减
-			oldValue = 0
+			//oldValue = 0
 			if flag == ADD {
 				r.LinkBase[linkKey] = &Link{
 					part1: to,
@@ -420,14 +373,14 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					"is less the num: %v to sub", link.val2, from, to, value)
 				return
 			}
-			newValue = value
+			//newValue = value
 		}
 
 	} else {
 		linkKey := getLinkKey(from, to)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
-			oldValue = link.val1
+			//oldValue = link.val1
 			if flag == ADD {
 				link.val1 += value
 			} else {
@@ -440,9 +393,9 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					return
 				}
 			}
-			oldValue = link.val1
+			//oldValue = link.val1
 		} else { // 如果link本身不存在，那么只能加不能减
-			oldValue = 0
+			//oldValue = 0
 			if flag == ADD {
 				r.LinkBase[linkKey] = &Link{
 					part1: from,
@@ -456,14 +409,16 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					"is less the num: %v to sub", link.val1, from, to, value)
 				return
 			}
-			newValue = value
+			//newValue = value
 		}
 	}
+	/*
 	if r.ID == from {
 		r.monitorLinkChange(oldValue, newValue, to)
 	} else {
 		r.monitorLinkChange(oldValue, newValue, from)
 	}
+	*/
 }
 
 // TODO(xuehan): 应该在真正支付时才被调用，所以update应该加个phase选项来区别对待。
