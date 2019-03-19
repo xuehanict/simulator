@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 	"bytes"
+	"strconv"
 )
 
 // 生成一定长度的随机字符串
@@ -35,3 +36,7 @@ func getDis(neighbour, dest string, lenthInterval int) int {
 	return depthN + depthD - (2 * cpl)
 }
 
+// 生成link的key，要求r1 < r2
+func getLinkKey(r1, r2 RouteID) string {
+	return strconv.Itoa(int(r1)) + "-" + strconv.Itoa(int(r2))
+}

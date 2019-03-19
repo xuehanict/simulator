@@ -3,10 +3,19 @@ package silentWhisper
 import (
 	"fmt"
 	"time"
+	"bytes"
 )
 
 type RouteID int
 type RequestID string
+
+const (
+	UP = true
+	DOWN = false
+	LINK_DIR_RIGHT = true
+	LINK_DIR_LEFT = false
+)
+
 
 /*
  * val1 指part1往part2方向的通道容量
@@ -31,16 +40,16 @@ type payReq struct {
 	root      RouteID
 	sender    RouteID
 	dest      string
-	value     float64
-	upperHop  RouteID
+	path      []RouteID
+	upOrDown  bool
 }
 
 type payRes struct {
 	requestID RequestID
 	root      RouteID
-	sender    RouteID
 	success   bool
-	val       float64
+	path      []RouteID
+	value 	  float64
 }
 
 type payment struct {
@@ -98,11 +107,37 @@ func (r *SWRouter) onMsg(msg interface{}) {
 }
 
 func (r *SWRouter) onPayReq(req *payReq) {
+	// 到目的地了
+	if req.dest == r.AddrWithRoots[req.root].addr {
+		res := & payRes{
+			path: append(req.path, r.ID),
+			requestID: req.requestID,
+			root: req.root,
+			success: true,
+		}
+		r.sendMsg(req.sender, res)
+	} else {
+		// 如果到了root节点，则修改传播方向为down
+		if req.root == r.ID {
+			req.upOrDown = DOWN
+		}
+		nextHop := r.getNextHop(req.dest, req.root, req.upOrDown)
+		req.path = append(req.path, r.ID)
 
+		if nextHop != -1 {
+			r.sendMsg(nextHop, req)
+		} else {
+			r.sendMsg(req.sender, &payRes{
+				success: false,
+				requestID: req.requestID,
+				path: req.path,
+			})
+		}
+	}
 }
 
 func (r *SWRouter) onPayRes(res *payRes) {
-
+	r.payRequestPool[res.requestID] <- res
 }
 
 func (r *SWRouter) onPayment(payment *payment) {
@@ -138,6 +173,71 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 
 func (r *SWRouter) notifyRooterReset(roots []RequestID) {
 
+}
+func (r *SWRouter) getLinkValue(neighbour RouteID, direction bool) (float64, error) {
+
+	if r.ID == neighbour {
+		return 0, fmt.Errorf("cann't get link value to self")
+	}
+	if r.ID < neighbour {
+		linkKey := getLinkKey(r.ID, neighbour)
+		link, ok := r.LinkBase[linkKey]
+		if !ok {
+			return 0, nil
+		} else {
+			if direction == LINK_DIR_RIGHT {
+				return link.val1, nil
+			} else {
+				return link.val2, nil
+			}
+		}
+	} else {
+		linkKey := getLinkKey(neighbour, r.ID)
+		link, ok := r.LinkBase[linkKey]
+		if !ok {
+			return 0, nil
+		} else {
+			if direction == LINK_DIR_RIGHT {
+				return link.val2, nil
+			} else {
+				return link.val1, nil
+			}
+		}
+	}
+	return 0, nil
+}
+
+func (r *SWRouter) getNextHop (dest string, root RouteID,
+	upOrDown bool) RouteID {
+	nextHop := RouteID(-1)
+	if upOrDown == UP {
+		return r.AddrWithRoots[root].parent
+	} else {
+
+		// TODO(xuehan): 这里应该改成从邻居实时pull地址
+		bestCpl := getCPL(dest, r.AddrWithRoots[root].addr, 4)
+		for n := range  r.Neighbours {
+			cpl := getCPL(r.RouterBase[n].AddrWithRoots[root].addr,
+				dest, 4)
+			if cpl > bestCpl {
+				return n
+			}
+		}
+	}
+	return nextHop
+}
+
+func getCPL(addr1, addr2 string, interval int) int{
+	cpl := 0
+	addr1Bytes := []byte(addr1)
+	addr2Bytes := []byte(addr2)
+	for ; cpl < len(addr1)/interval && cpl < len(addr2)/interval &&
+		bytes.Equal(addr1Bytes[0:interval],
+			addr2Bytes[0:interval]); cpl++ {
+		addr1Bytes = addr1Bytes[interval:]
+		addr2Bytes = addr2Bytes[interval:]
+	}
+	return cpl
 }
 
 func (r *SWRouter) sendMsg(id RouteID, msg interface{}) {
