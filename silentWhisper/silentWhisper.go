@@ -1,21 +1,22 @@
 package silentWhisper
 
 import (
+	"bytes"
 	"fmt"
 	"time"
-	"bytes"
 )
 
 type RouteID int
 type RequestID string
 
 const (
-	UP = true
-	DOWN = false
+	UP             = true
+	DOWN           = false
 	LINK_DIR_RIGHT = true
-	LINK_DIR_LEFT = false
+	LINK_DIR_LEFT  = false
+	ADD            = 0
+	SUB            = 1
 )
-
 
 /*
  * val1 指part1往part2方向的通道容量
@@ -49,20 +50,23 @@ type payRes struct {
 	root      RouteID
 	success   bool
 	path      []RouteID
-	value 	  float64
+	value     float64
 }
 
 type htlc struct {
 	requestID RequestID
 	amount    float64
+	root      RouteID
+	upper     RouteID
+	path      []RouteID
 }
 
 type htlcFullfill struct {
 	requestID RequestID
-	success bool
-	reason string
+	root      RouteID
+	success   bool
+	reason    string
 }
-
 
 type addrWithRoot struct {
 	root RouteID
@@ -78,6 +82,8 @@ type SWRouter struct {
 	Neighbours     map[RouteID]struct{}
 	RouterBase     map[RouteID]*SWRouter
 	payRequestPool map[RequestID]chan *payRes
+	htlcBase       map[RequestID]map[RouteID]*htlc
+	htlcPool 	   map[RequestID]chan *htlcFullfill
 	LinkBase       map[string]*Link
 	MsgPool        chan interface{}
 	timer          *time.Ticker
@@ -118,11 +124,11 @@ func (r *SWRouter) onMsg(msg interface{}) {
 func (r *SWRouter) onPayReq(req *payReq) {
 	// 到目的地了
 	if req.dest == r.AddrWithRoots[req.root].addr {
-		res := & payRes{
-			path: append(req.path, r.ID),
+		res := &payRes{
+			path:      append(req.path, r.ID),
 			requestID: req.requestID,
-			root: req.root,
-			success: true,
+			root:      req.root,
+			success:   true,
 		}
 		r.sendMsg(req.sender, res)
 	} else {
@@ -137,9 +143,9 @@ func (r *SWRouter) onPayReq(req *payReq) {
 			r.sendMsg(nextHop, req)
 		} else {
 			r.sendMsg(req.sender, &payRes{
-				success: false,
+				success:   false,
 				requestID: req.requestID,
-				path: req.path,
+				path:      req.path,
 			})
 		}
 	}
@@ -150,13 +156,74 @@ func (r *SWRouter) onPayRes(res *payRes) {
 }
 
 func (r *SWRouter) onHTLC(htlc *htlc) {
+	r.htlcBase[htlc.requestID][htlc.root] = htlc
 
+	value := htlc.amount
+	requestID := htlc.requestID
+	root := htlc.root
+	path := htlc.path
+	index, err := findIndexInPath(r.ID, path)
+	if err != nil {
+		fmt.Printf("faced error :%v\n", err)
+	}
+	// 到达目的地了
+	if index == len(path) - 1 {
+		hff := &htlcFullfill{
+			success: true,
+			requestID: requestID,
+			root: root,
+		}
+		r.sendMsg(path[index-1],hff)
+		return
+	}
+
+	// 还在半路上
+	htlc.upper = r.ID
+	err = r.updateLinkValue(r.ID, path[index+1], value, SUB)
+	// 钱不够了，那么开始回滚
+	if err != nil {
+		hff := &htlcFullfill{
+			success: false,
+			requestID: requestID,
+			root: root,
+			reason: err.Error(),
+		}
+		r.sendMsg(path[index-1], hff)
+	} else {
+		r.sendMsg(path[index + 1], htlc)
+	}
 }
 
-func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill)  {
-
+func findIndexInPath(id RouteID, path []RouteID) (int, error) {
+	for index, node := range path{
+		if node == id {
+			return index, nil
+		}
+	}
+	return 0, fmt.Errorf("not in the path")
 }
 
+
+func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill) {
+	htlc := r.htlcBase[hff.requestID][hff.root]
+	index, err := findIndexInPath(r.ID, htlc.path)
+	if err != nil {
+		fmt.Printf("faced err:%v ", err)
+		return
+	}
+	// 如果不是
+	if index != 0 {
+		if hff.success == true {
+			r.updateLinkValue(r.ID, htlc.upper, htlc.amount, ADD)
+		} else {
+			r.updateLinkValue(htlc.upper, r.ID, htlc.amount, SUB)
+		}
+		r.sendMsg(htlc.upper, hff)
+	} else {
+		r.htlcPool[hff.requestID] <- hff
+		return
+	}
+}
 
 func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	addr := r.AddrWithRoots[awr.root]
@@ -174,20 +241,21 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 			addr:   awr.addr + GetRandomString(4),
 			parent: awr.src,
 		}
-		for  nei := range r.Neighbours {
-			r. sendMsg(nei, &addrWithRoot{
+		for nei := range r.Neighbours {
+			r.sendMsg(nei, &addrWithRoot{
 				root: awr.root,
 				addr: addr.addr,
 				time: addr.time,
-				src: r.ID,
+				src:  r.ID,
 			})
 		}
 	}
 }
 
-func (r *SWRouter) notifyRooterReset(roots []RequestID) {
+func (r *SWRouter) notifyRooterReset() {
 
 }
+
 func (r *SWRouter) getLinkValue(neighbour RouteID, direction bool) (float64, error) {
 
 	if r.ID == neighbour {
@@ -221,7 +289,7 @@ func (r *SWRouter) getLinkValue(neighbour RouteID, direction bool) (float64, err
 	return 0, nil
 }
 
-func (r *SWRouter) getNextHop (dest string, root RouteID,
+func (r *SWRouter) getNextHop(dest string, root RouteID,
 	upOrDown bool) RouteID {
 	nextHop := RouteID(-1)
 	if upOrDown == UP {
@@ -230,7 +298,7 @@ func (r *SWRouter) getNextHop (dest string, root RouteID,
 
 		// TODO(xuehan): 这里应该改成从邻居实时pull地址
 		bestCpl := getCPL(dest, r.AddrWithRoots[root].addr, 4)
-		for n := range  r.Neighbours {
+		for n := range r.Neighbours {
 			cpl := getCPL(r.RouterBase[n].AddrWithRoots[root].addr,
 				dest, 4)
 			if cpl > bestCpl {
@@ -241,7 +309,7 @@ func (r *SWRouter) getNextHop (dest string, root RouteID,
 	return nextHop
 }
 
-func getCPL(addr1, addr2 string, interval int) int{
+func getCPL(addr1, addr2 string, interval int) int {
 	cpl := 0
 	addr1Bytes := []byte(addr1)
 	addr2Bytes := []byte(addr2)
@@ -259,5 +327,78 @@ func (r *SWRouter) sendMsg(id RouteID, msg interface{}) {
 }
 
 func NewSWRouter() *SWRouter {
+	return nil
+}
+
+// TODO(xuehan): add error return
+func (r *SWRouter) updateLinkValue(from, to RouteID, value float64,
+	flag int) error {
+
+	//var oldValue, newValue float64
+	if from > to {
+		linkKey := getLinkKey(to, from)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			//oldValue = link.val2
+			if flag == ADD {
+				link.val2 += value
+			} else {
+				if link.val2 >= value {
+					link.val2 -= value
+				} else {
+					//TODO(xuehan). log
+					return fmt.Errorf("the fund: %v in the link: %v --> %v "+
+						"is less the num: %v to sub", link.val2, from, to, value)
+				}
+			}
+			//newValue = link.val2
+		} else { // 如果link本身不存在，那么只能加不能减
+			//oldValue = 0
+			if flag == ADD {
+				r.LinkBase[linkKey] = &Link{
+					part1: to,
+					part2: from,
+					val1:  0,
+					val2:  value,
+				}
+			} else {
+				//TODO(xuehan). log
+				return fmt.Errorf("the fund: %v in the link: %v --> %v "+
+					"is less the num: %v to sub", link.val2, from, to, value)
+
+			}
+			//newValue = value
+		}
+
+	} else {
+		linkKey := getLinkKey(from, to)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			if flag == ADD {
+				link.val1 += value
+			} else {
+				if link.val1 >= value {
+					link.val1 -= value
+				} else {
+					//TODO(xuehan). log
+					return fmt.Errorf("the fund: %v in the link: %v --> %v "+
+						"is less the num: %v to sub", link.val1, from, to, value)
+				}
+			}
+		} else { // 如果link本身不存在，那么只能加不能减
+			if flag == ADD {
+				r.LinkBase[linkKey] = &Link{
+					part1: from,
+					part2: to,
+					val1:  value,
+					val2:  0,
+				}
+			} else {
+				//TODO(xuehan). log
+				return fmt.Errorf("the fund: %v in the link: %v --> %v "+
+					"is less the num: %v to sub", link.val1, from, to, value)
+			}
+		}
+	}
 	return nil
 }
