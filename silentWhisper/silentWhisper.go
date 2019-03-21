@@ -52,10 +52,17 @@ type payRes struct {
 	value 	  float64
 }
 
-type payment struct {
+type htlc struct {
 	requestID RequestID
 	amount    float64
 }
+
+type htlcFullfill struct {
+	requestID RequestID
+	success bool
+	reason string
+}
+
 
 type addrWithRoot struct {
 	root RouteID
@@ -99,8 +106,10 @@ func (r *SWRouter) onMsg(msg interface{}) {
 		r.onPayRes(msg.(*payRes))
 	case *payReq:
 		r.onPayReq(msg.(*payReq))
-	case *payment:
-		r.onPayment(msg.(*payment))
+	case *htlc:
+		r.onHTLC(msg.(*htlc))
+	case *htlcFullfill:
+		r.onHTLCFullfill(msg.(*htlcFullfill))
 	case *addrWithRoot:
 		r.onAddrWithRoot(msg.(*addrWithRoot))
 	}
@@ -140,9 +149,14 @@ func (r *SWRouter) onPayRes(res *payRes) {
 	r.payRequestPool[res.requestID] <- res
 }
 
-func (r *SWRouter) onPayment(payment *payment) {
+func (r *SWRouter) onHTLC(htlc *htlc) {
 
 }
+
+func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill)  {
+
+}
+
 
 func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	addr := r.AddrWithRoots[awr.root]
