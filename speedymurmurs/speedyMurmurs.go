@@ -367,6 +367,14 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					val1:  0,
 					val2:  value,
 				}
+				// 更新邻居信息
+				if from == r.ID {
+					r.Neighbours[to] = struct {}{}
+					r.RouterBase[to].Neighbours[from] = struct{}{}
+				} else {
+					r.Neighbours[from] = struct{}{}
+					r.RouterBase[from].Neighbours[to] = struct{}{}
+				}
 			} else {
 				//TODO(xuehan). log
 				fmt.Printf("The fund: %v in the link: %v --> %v "+
@@ -402,6 +410,15 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 					part2: to,
 					val1:  value,
 					val2:  0,
+				}
+
+				// 更新邻居信息
+				if from == r.ID {
+					r.Neighbours[to] = struct {}{}
+					r.RouterBase[to].Neighbours[from] = struct{}{}
+				} else {
+					r.Neighbours[from] = struct{}{}
+					r.RouterBase[from].Neighbours[to] = struct{}{}
 				}
 			} else {
 				//TODO(xuehan). log
@@ -472,6 +489,19 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 			}
 		}
 	}
+	// 判断和邻居的链接是否都还大于0，如果两个都等于0，那么就从邻居集合中删掉
+	var linkKey string
+	if r.ID < neighbour {
+		linkKey = getLinkKey(r.ID, neighbour)
+	} else {
+		linkKey = getLinkKey(neighbour, r.ID)
+	}
+	if r.LinkBase[linkKey].val1 == 0 &&
+		r.LinkBase[linkKey].val2 == 0 {
+		delete(r.Neighbours, neighbour)
+		delete(r.RouterBase[neighbour].Neighbours, r.ID)
+	}
+
 	// 针对需要重构的地址，按root分别进行重构
 	for root := range reset {
 		r.resetAddr(root)
@@ -646,4 +676,60 @@ func NewSMRouter(id RouteID, roots []RouteID,
 		quit:            make(chan struct{}),
 	}
 	return router
+}
+
+func (r *SMRouter) AddLink (n RouteID, toN, fromN float64) {
+	if n < r.ID {
+		linkKey := getLinkKey(n, r.ID)
+		r.LinkBase[linkKey] = &Link{
+			part1: n,
+			part2: r.ID,
+			val1: fromN,
+			val2: toN,
+		}
+	} else {
+		linkKey := getLinkKey(r.ID, n)
+		r.LinkBase[linkKey] = &Link{
+			part1: r.ID,
+			part2: n,
+			val1: toN,
+			val2: fromN,
+		}
+	}
+	r.Neighbours[n] = struct{}{}
+	r.RouterBase[n].Neighbours[r.ID] = struct{}{}
+}
+
+func (r *SMRouter)RemoveLink (n RouteID)  {
+	if n > r.ID {
+		linkKey := getLinkKey(r.ID, n)
+		delete(r.LinkBase, linkKey)
+	} else {
+		linkKey := getLinkKey(n, r.ID)
+		delete(r.LinkBase, linkKey)
+	}
+	delete(r.Neighbours, n)
+	delete(r.RouterBase[n].Neighbours, r.ID)
+}
+
+func (r *SMRouter)GetLink (n RouteID) *Link {
+	var linkKey string
+	if n < r.ID {
+		linkKey = getLinkKey(n, r.ID)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			return link
+		} else {
+			return nil
+		}
+	} else {
+		linkKey = getLinkKey(r.ID, n)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			return link
+		} else {
+			return nil
+		}
+	}
+	return nil
 }

@@ -232,7 +232,7 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 		changed = true
 
 	} else if addr.time == awr.time &&
-		len(addr.addr) > len(awr.addr)-4 {
+		len(addr.addr) > len(awr.addr) + 4 {
 		changed = true
 	}
 	if changed {
@@ -252,8 +252,22 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	}
 }
 
-func (r *SWRouter) notifyRooterReset() {
-
+func NotifyRooterReset(roots []RouteID, routerBase []SWRouter) {
+	for _, root := range roots{
+		rootRouter := routerBase[root]
+		rootRouter.AddrWithRoots[root] = &addrType{
+			addr: "",
+			time: time.Now().Unix(),
+		}
+		for n := range rootRouter.Neighbours {
+			rootRouter.sendMsg(n, addrWithRoot{
+				root: root,
+				addr: "",
+				time: time.Now().Unix(),
+				src: root,
+			})
+		}
+	}
 }
 
 func (r *SWRouter) getLinkValue(neighbour RouteID, direction bool) (float64, error) {
@@ -361,6 +375,14 @@ func (r *SWRouter) updateLinkValue(from, to RouteID, value float64,
 					val1:  0,
 					val2:  value,
 				}
+				// 更新邻居信息
+				if from == r.ID {
+					r.Neighbours[to] = struct {}{}
+					r.RouterBase[to].Neighbours[from] = struct{}{}
+				} else {
+					r.Neighbours[from] = struct{}{}
+					r.RouterBase[from].Neighbours[to] = struct{}{}
+				}
 			} else {
 				//TODO(xuehan). log
 				return fmt.Errorf("the fund: %v in the link: %v --> %v "+
@@ -369,7 +391,6 @@ func (r *SWRouter) updateLinkValue(from, to RouteID, value float64,
 			}
 			//newValue = value
 		}
-
 	} else {
 		linkKey := getLinkKey(from, to)
 		link, ok := r.LinkBase[linkKey]
@@ -393,11 +414,75 @@ func (r *SWRouter) updateLinkValue(from, to RouteID, value float64,
 					val1:  value,
 					val2:  0,
 				}
+				// 更新邻居信息
+				if from == r.ID {
+					r.Neighbours[to] = struct {}{}
+					r.RouterBase[to].Neighbours[from] = struct{}{}
+				} else {
+					r.Neighbours[from] = struct{}{}
+					r.RouterBase[from].Neighbours[to] = struct{}{}
+				}
 			} else {
 				//TODO(xuehan). log
 				return fmt.Errorf("the fund: %v in the link: %v --> %v "+
 					"is less the num: %v to sub", link.val1, from, to, value)
 			}
+		}
+	}
+	return nil
+}
+
+func (r *SWRouter) AddLink (n RouteID, toN, fromN float64) {
+	if n < r.ID {
+		linkKey := getLinkKey(n, r.ID)
+		r.LinkBase[linkKey] = &Link{
+			part1: n,
+			part2: r.ID,
+			val1: fromN,
+			val2: toN,
+		}
+	} else {
+		linkKey := getLinkKey(r.ID, n)
+		r.LinkBase[linkKey] = &Link{
+			part1: r.ID,
+			part2: n,
+			val1: toN,
+			val2: fromN,
+		}
+	}
+	r.Neighbours[n] = struct{}{}
+	r.RouterBase[n].Neighbours[r.ID] = struct{}{}
+}
+
+func (r *SWRouter)RemoveLink (n RouteID)  {
+	if n > r.ID {
+		linkKey := getLinkKey(r.ID, n)
+		delete(r.LinkBase, linkKey)
+	} else {
+		linkKey := getLinkKey(n, r.ID)
+		delete(r.LinkBase, linkKey)
+	}
+	delete(r.Neighbours, n)
+	delete(r.RouterBase[n].Neighbours, r.ID)
+}
+
+func (r *SWRouter)GetLink (n RouteID) *Link {
+	var linkKey string
+	if n < r.ID {
+		linkKey = getLinkKey(n, r.ID)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			return link
+		} else {
+			return nil
+		}
+	} else {
+		linkKey = getLinkKey(r.ID, n)
+		link, ok := r.LinkBase[linkKey]
+		if ok {
+			return link
+		} else {
+			return nil
 		}
 	}
 	return nil
