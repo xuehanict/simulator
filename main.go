@@ -6,6 +6,7 @@ import (
 	"os"
 	"encoding/json"
 	sw "github.com/lightningnetwork/sm/silentWhisper"
+	"time"
 )
 
 func main()  {
@@ -46,7 +47,14 @@ func main()  {
 	}
 
 	for _,r := range nodes {
+		go r.Start()
+		time.Sleep(1 * time.Second)
+	}
 
+	sw.NotifyRooterReset(roots, nodes)
+
+	for _, node := range nodes {
+		fmt.Printf("node %v addr is %v\n", node.ID, node.AddrWithRoots)
 	}
 
 }

@@ -194,6 +194,7 @@ func (r *SWRouter) onHTLC(htlc *htlc) {
 			requestID: requestID,
 			root:      root,
 		}
+		r.updateLinkValue(r.ID, htlc.upper, value, ADD)
 		r.sendMsg(path[index-1], hff)
 		return
 	}
@@ -221,6 +222,8 @@ func (r *SWRouter) sendPayment(dest RouteID, amount float64) error {
 	neighboursToSend := make([]RouteID, len(r.Roots))
 	destAddr := r.RouterBase[dest].AddrWithRoots[dest]
 	requestID := RequestID(GetRandomString(10))
+	r.payRequestPool[requestID] = make(chan *payRes)
+	r.htlcPool[requestID] = make(chan *htlcFullfill)
 	for i, root := range r.Roots {
 		var dir bool
 		if r.ID == root {
@@ -240,12 +243,13 @@ func (r *SWRouter) sendPayment(dest RouteID, amount float64) error {
 			requestID: requestID,
 			root:      root,
 			dest:      r.RouterBase[dest].AddrWithRoots[root].Addr,
+			path:      make([]RouteID,0),
 		}
-
 		r.sendMsg(nextHop, payreq)
 	}
 
 	resArray := make([]*payRes, 0)
+	mins := make([]float64,0)
 out:
 	for {
 		select {
@@ -254,6 +258,7 @@ out:
 				return fmt.Errorf("probe failed")
 			}
 			resArray = append(resArray, res)
+			mins = append(mins,res.value)
 			if len(resArray) == len(r.Roots) {
 				break out
 			}
@@ -262,6 +267,37 @@ out:
 		}
 	}
 
+	splitedAmts := minPart(amount, mins)
+	for i, amt := range splitedAmts {
+		htlc := &htlc{
+			amount: amt,
+			root: resArray[i].root,
+			path: resArray[i].path,
+			upper: r.ID,
+			requestID: resArray[i].requestID,
+		}
+		err := r.updateLinkValue(r.ID, resArray[i].path[0], amt, SUB)
+		if err != nil {
+			return err
+		}
+		r.sendMsg(resArray[i].path[0], htlc)
+	}
+
+	hffLen := 0
+	for {
+		select {
+		case hff := <-r.htlcPool[requestID]:
+			if hff.success == false {
+				return fmt.Errorf("payment failed")
+			}
+			hffLen++
+			if hffLen == len(r.Roots) {
+				return nil
+			}
+		case <- time.After(2 * time.Second):
+			return fmt.Errorf(" timeout for payment")
+		}
+	}
 	return nil
 }
 
@@ -286,7 +322,7 @@ func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill) {
 		if hff.success == true {
 			r.updateLinkValue(r.ID, htlc.upper, htlc.amount, ADD)
 		} else {
-			r.updateLinkValue(htlc.upper, r.ID, htlc.amount, SUB)
+			r.updateLinkValue(htlc.upper, r.ID, htlc.amount, ADD)
 		}
 		r.sendMsg(htlc.upper, hff)
 	} else {
@@ -322,7 +358,7 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	}
 }
 
-func NotifyRooterReset(roots []RouteID, routerBase []SWRouter) {
+func NotifyRooterReset(roots []RouteID, routerBase map[RouteID]*SWRouter) {
 	for _, root := range roots {
 		rootRouter := routerBase[root]
 		rootRouter.AddrWithRoots[root] = &addrType{
