@@ -1,18 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
+	"fmt"
 	"os"
 	"encoding/json"
-	sw "github.com/lightningnetwork/sm/silentWhisper"
 	"time"
+	sw "github.com/lightningnetwork/sm/silentWhisper"
+	"sync"
 )
 
 func main()  {
+
+	testSW()
+
+}
+
+func testSW()  {
 	var (
 		nodes= make(map[sw.RouteID]*sw.SWRouter, 0)
 		edges= make(map[string]*sw.Link, 0)
+		wg = sync.WaitGroup{}
 	)
 	graphJson, err := ioutil.ReadFile(tenNodesGraph)
 	if err != nil {
@@ -47,6 +55,7 @@ func main()  {
 	}
 
 	for _,r := range nodes {
+		wg.Add(1)
 		go r.Start()
 		//fmt.Printf("router %v start\n", r.ID)
 		fmt.Printf("router %v nei is %v\n", r.ID, r.Neighbours)
@@ -55,12 +64,34 @@ func main()  {
 
 	sw.NotifyRooterReset(roots, nodes)
 
-	for i := 0 ;i< 5; i++ {
+	for i := 0 ;i< 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
+
 	for _, node := range nodes {
-		fmt.Printf("node %v addr is %v\n", node.ID, node.AddrWithRoots)
+		for key, value := range  node.AddrWithRoots{
+			node.Printf("root %v address is %v\n", key,value)
+		}
 	}
 
+
+	fmt.Printf("send result%v\n",nodes[1].SendPayment(8, 100))
+
+
+	for {
+		fmt.Printf("1111")
+		time.Sleep(1000 * time.Second)
+	}
+
+	for _,node := range nodes{
+		node.Stop()
+		wg.Done()
+	}
+	wg.Wait()
 }
+
+
+
+
+
