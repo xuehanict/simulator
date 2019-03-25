@@ -103,7 +103,7 @@ func NewSwRouter(id RouteID, roots []RouteID,
 		payRequestPool: make(map[RequestID]chan *payRes),
 		htlcBase:       make(map[RequestID]map[RouteID]*htlc),
 		htlcPool:       make(map[RequestID]chan *htlcFullfill),
-		LinkBase:       make(map[string]*Link),
+		LinkBase:     	linkBase,
 		MsgPool:        make(chan interface{}),
 		timer:          time.NewTicker(HTLC_CLEAR_TIME * time.Second),
 		quit:           make(chan struct{}),
@@ -115,6 +115,7 @@ func (r *SWRouter) Start() {
 	for {
 		select {
 		case msg := <-r.MsgPool:
+			r.Printf("收到消息：%v\n", msg)
 			r.onMsg(msg)
 		case <-r.quit:
 			fmt.Printf("")
@@ -138,6 +139,7 @@ func (r *SWRouter) onMsg(msg interface{}) {
 	case *htlcFullfill:
 		r.onHTLCFullfill(msg.(*htlcFullfill))
 	case *addrWithRoot:
+		//r.Printf("调用onAddrWithRoot\n")
 		r.onAddrWithRoot(msg.(*addrWithRoot))
 	}
 }
@@ -332,11 +334,10 @@ func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill) {
 }
 
 func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
-	addr := r.AddrWithRoots[awr.root]
+	addr,ok := r.AddrWithRoots[awr.root]
 	changed := false
-	if addr == nil || addr.Time < awr.time {
+	if !ok || addr.Time < awr.time {
 		changed = true
-
 	} else if addr.Time == awr.time &&
 		len(addr.Addr) > len(awr.addr)+4 {
 		changed = true
@@ -347,6 +348,7 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 			Addr:   awr.addr + GetRandomString(4),
 			Parent: awr.src,
 		}
+		r.AddrWithRoots[awr.root] = addr
 		for nei := range r.Neighbours {
 			r.sendMsg(nei, &addrWithRoot{
 				root: awr.root,
@@ -366,7 +368,7 @@ func NotifyRooterReset(roots []RouteID, routerBase map[RouteID]*SWRouter) {
 			Time: time.Now().Unix(),
 		}
 		for n := range rootRouter.Neighbours {
-			rootRouter.sendMsg(n, addrWithRoot{
+			rootRouter.sendMsg(n, &addrWithRoot{
 				root: root,
 				addr: "",
 				time: time.Now().Unix(),
@@ -443,9 +445,13 @@ func getCPL(addr1, addr2 string, interval int) int {
 }
 
 func (r *SWRouter) sendMsg(id RouteID, msg interface{}) {
+	r.Printf("发送消息:%v \n", msg)
 	r.RouterBase[id].MsgPool <- msg
 }
 
+func (r *SWRouter)Printf(string string, a ...interface{})  {
+	fmt.Printf("R%v:" + string, r.ID, a)
+}
 // TODO(xuehan): add error return
 func (r *SWRouter) updateLinkValue(from, to RouteID, value float64,
 	flag int) error {

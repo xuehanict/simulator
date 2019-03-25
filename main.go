@@ -48,11 +48,17 @@ func main()  {
 
 	for _,r := range nodes {
 		go r.Start()
+		//fmt.Printf("router %v start\n", r.ID)
+		fmt.Printf("router %v nei is %v\n", r.ID, r.Neighbours)
 		time.Sleep(1 * time.Second)
 	}
 
 	sw.NotifyRooterReset(roots, nodes)
 
+	for i := 0 ;i< 5; i++ {
+		time.Sleep(1 * time.Second)
+		fmt.Printf("wait 1s\n")
+	}
 	for _, node := range nodes {
 		fmt.Printf("node %v addr is %v\n", node.ID, node.AddrWithRoots)
 	}
