@@ -3,8 +3,8 @@ package silentWhisper
 import (
 	"bytes"
 	"fmt"
-	"time"
 	"strconv"
+	"time"
 )
 
 type RouteID int
@@ -47,7 +47,7 @@ type payReq struct {
 	dest      string
 	path      []RouteID
 	upOrDown  bool
-	value 	  float64
+	value     float64
 }
 
 type payRes struct {
@@ -64,7 +64,8 @@ type htlc struct {
 	root      RouteID
 	upper     RouteID
 	path      []RouteID
-	sender 	  RouteID
+	sender    RouteID
+	ffOnece   bool
 }
 
 type htlcFullfill struct {
@@ -72,7 +73,7 @@ type htlcFullfill struct {
 	root      RouteID
 	success   bool
 	reason    string
-	sender	   RouteID
+	sender    RouteID
 }
 
 type addrWithRoot struct {
@@ -109,7 +110,7 @@ func NewSwRouter(id RouteID, roots []RouteID,
 		payRequestPool: make(map[RequestID]chan *payRes),
 		htlcBase:       make(map[RequestID]map[RouteID]*htlc),
 		htlcPool:       make(map[RequestID]chan *htlcFullfill),
-		LinkBase:     	linkBase,
+		LinkBase:       linkBase,
 		MsgPool:        make(chan interface{}, 1000),
 		timer:          time.NewTicker(HTLC_CLEAR_TIME * time.Second),
 		quit:           make(chan struct{}),
@@ -120,13 +121,13 @@ func NewSwRouter(id RouteID, roots []RouteID,
 func (r *SWRouter) Start() {
 	mesNum := 0
 	for {
-		mesNum ++
+		mesNum++
 		select {
 		case msg := <-r.MsgPool:
 			r.onMsg(msg)
 			mesNum--
 		case <-r.quit:
-			r.Printf("mesNum is %v\n",mesNum)
+			r.Printf("mesNum is %v\n", mesNum)
 			return
 		}
 	}
@@ -141,7 +142,7 @@ func (r *SWRouter) onMsg(msg interface{}) {
 	case *payRes:
 		r.onPayRes(msg.(*payRes))
 	case *payReq:
-		r.Printf("收到req\n")
+		//r.Printf("收到req\n")
 		r.onPayReq(msg.(*payReq))
 	case *htlc:
 		r.onHTLC(msg.(*htlc))
@@ -154,13 +155,17 @@ func (r *SWRouter) onMsg(msg interface{}) {
 }
 
 func (r *SWRouter) onPayReq(req *payReq) {
-	if r.ID == 4 {
-		fmt.Printf("123")
+	if r.ID == 3 {
+		fmt.Printf("12")
 	}
-	// 到目的地了
-	if req.dest == r.AddrWithRoots[req.root].Addr {
+
+	path := append(req.path, r.ID)
+	rootIndex := findIndexInPath(req.root, path, true)
+	// 到目的地了,并且已经经过了root节点
+	if req.dest == r.AddrWithRoots[req.root].Addr &&
+		rootIndex != -1 {
 		res := &payRes{
-			path:      append(req.path, r.ID),
+			path:      path,
 			requestID: req.requestID,
 			root:      req.root,
 			success:   true,
@@ -173,18 +178,19 @@ func (r *SWRouter) onPayReq(req *payReq) {
 			req.upOrDown = DOWN
 		}
 		nextHop := r.GetNextHop(req.dest, req.root, req.upOrDown)
-		req.path = append(req.path, r.ID)
-		linkValue, err := r.getLinkValue(nextHop,LINK_DIR_RIGHT)
-		if nextHop == -1 || err != nil{
+		//req.path = append(req.path, r.ID)
+		linkValue, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
+		if nextHop == -1 || err != nil {
 			r.sendMsg(req.sender, &payRes{
 				success:   false,
 				requestID: req.requestID,
-				path:      req.path,
+				path:      path,
 			})
 		} else {
 			if req.value > linkValue {
 				req.value = linkValue
 			}
+			req.path = path
 			r.sendMsg(nextHop, req)
 		}
 	}
@@ -195,27 +201,29 @@ func (r *SWRouter) onPayRes(res *payRes) {
 }
 
 func (r *SWRouter) onHTLC(h *htlc) {
-	if _,ok :=r.htlcBase[h.requestID]; !ok {
+	var dir bool
+	if _, ok := r.htlcBase[h.requestID]; !ok {
 		r.htlcBase[h.requestID] = make(map[RouteID]*htlc)
+		dir = true
+	} else {
+		dir = false
 	}
 	r.htlcBase[h.requestID][h.root] = newHTLC(h)
 	value := h.amount
 	requestID := h.requestID
 	root := h.root
 	path := h.path
-	index, err := findIndexInPath(r.ID, path)
-	if err != nil {
-		fmt.Printf("faced error :%v\n", err)
-	}
+	index := findIndexInPath(r.ID, path, dir)
+
 	// 到达目的地了
 	if index == len(path)-1 {
 		hff := &htlcFullfill{
 			success:   true,
 			requestID: requestID,
 			root:      root,
-			sender: h.sender,
+			sender:    h.sender,
 		}
-		r.updateLinkValue(r.ID, h.upper, value, ADD)
+		r.updateLinkValue(r.ID, path[index-1], value, ADD)
 		r.sendMsg(path[index-1], hff)
 		return
 	}
@@ -224,7 +232,7 @@ func (r *SWRouter) onHTLC(h *htlc) {
 	forwardHTLC := newHTLC(h)
 	forwardHTLC.upper = r.ID
 	h.upper = r.ID
-	err = r.updateLinkValue(r.ID, path[index+1], value, SUB)
+	err := r.updateLinkValue(r.ID, path[index+1], value, SUB)
 	// 钱不够了，那么开始回滚
 	if err != nil {
 		hff := &htlcFullfill{
@@ -239,18 +247,13 @@ func (r *SWRouter) onHTLC(h *htlc) {
 	}
 }
 
-
-
-
-
-
 func (r *SWRouter) SendPayment(dest RouteID, amount float64) error {
 
 	//splittedAmounts := Partition(amount, len(r.Roots))
 	neighboursToSend := make([]RouteID, len(r.Roots))
 
 	requestID := RequestID(GetRandomString(10))
-	r.payRequestPool[requestID] = make(chan *payRes,PAY_RES_BUFFER)
+	r.payRequestPool[requestID] = make(chan *payRes, PAY_RES_BUFFER)
 	r.htlcPool[requestID] = make(chan *htlcFullfill, PAY_RES_BUFFER)
 	for i, root := range r.Roots {
 		destAddr := r.RouterBase[dest].AddrWithRoots[root]
@@ -260,13 +263,13 @@ func (r *SWRouter) SendPayment(dest RouteID, amount float64) error {
 		} else {
 			dir = UP
 		}
-		nextHop := r.GetNextHop(destAddr.Addr,root, dir)
+		nextHop := r.GetNextHop(destAddr.Addr, root, dir)
 		if nextHop == -1 {
 			return fmt.Errorf("send payment failed, " +
 				"cann't find next hop")
 		}
 		neighboursToSend[i] = nextHop
-		value, err := r.getLinkValue(nextHop,LINK_DIR_RIGHT)
+		value, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
 		if err != nil {
 			return err
 		}
@@ -276,15 +279,16 @@ func (r *SWRouter) SendPayment(dest RouteID, amount float64) error {
 			requestID: requestID,
 			root:      root,
 			dest:      destAddr.Addr,
-			path:      make([]RouteID,0),
+			path:      make([]RouteID, 0),
 			upOrDown:  UP,
 			value:     value,
 		}
+		payreq.path = append(payreq.path, r.ID)
 		r.sendMsg(nextHop, payreq)
 	}
 
 	resArray := make([]*payRes, 0)
-	mins := make([]float64,0)
+	mins := make([]float64, 0)
 out:
 	for {
 		select {
@@ -293,7 +297,7 @@ out:
 				return fmt.Errorf("probe failed")
 			}
 			resArray = append(resArray, res)
-			mins = append(mins,res.value)
+			mins = append(mins, res.value)
 			if len(resArray) == len(r.Roots) {
 				break out
 			}
@@ -306,19 +310,20 @@ out:
 	r.htlcBase[requestID] = make(map[RouteID]*htlc)
 	for i, amt := range splitedAmts {
 		htlc := &htlc{
-			amount: amt,
-			root: resArray[i].root,
-			path: resArray[i].path,
-			upper: r.ID,
-			sender: r.ID,
+			amount:    amt,
+			root:      resArray[i].root,
+			path:      resArray[i].path,
+			upper:     r.ID,
+			sender:    r.ID,
 			requestID: resArray[i].requestID,
+			ffOnece:   true,
 		}
-		err := r.updateLinkValue(r.ID, resArray[i].path[0], amt, SUB)
+		err := r.updateLinkValue(r.ID, resArray[i].path[1], amt, SUB)
 		if err != nil {
 			return err
 		}
-		r.htlcBase[requestID][resArray[i].root] =htlc
-		r.sendMsg(resArray[i].path[0], htlc)
+		r.htlcBase[requestID][resArray[i].root] = htlc
+		r.sendMsg(resArray[i].path[1], htlc)
 	}
 
 	hffLen := 0
@@ -332,7 +337,7 @@ out:
 			if hffLen == len(r.Roots) {
 				return nil
 			}
-		case <- time.After(2 * time.Second):
+		case <-time.After(2 * time.Second):
 			return fmt.Errorf(" timeout for payment")
 		}
 	}
@@ -341,48 +346,69 @@ out:
 
 func newHTLC(h *htlc) *htlc {
 	return &htlc{
-			amount: h.amount,
-			root: h.root,
-			path: h.path,
-			upper: h.upper,
-			sender: h.sender,
-			requestID: h.requestID,
+		amount:    h.amount,
+		root:      h.root,
+		path:      h.path,
+		upper:     h.upper,
+		sender:    h.sender,
+		requestID: h.requestID,
 	}
 }
 
-func findIndexInPath(id RouteID, path []RouteID) (int, error) {
-	for index, node := range path {
-		if node == id {
-			return index, nil
+func findIndexInPath(id RouteID, path []RouteID, dir bool) int {
+
+	if dir == true {
+		for index, node := range path {
+			if node == id {
+				return index
+			}
+		}
+	} else {
+		for i := len(path) - 1; i >= 0; i-- {
+			if path[i] == id {
+				return i
+			}
 		}
 	}
-	return 0, fmt.Errorf("not in the path")
+
+	return -1
 }
 
 func (r *SWRouter) onHTLCFullfill(hff *htlcFullfill) {
+
 	htlc := r.htlcBase[hff.requestID][hff.root]
-//	index, err := findIndexInPath(r.ID, htlc.path)
-//	if err != nil {
-//		fmt.Printf("faced err:%v ", err)
-//		return
-//	}
+	//	index, err := findIndexInPath(r.ID, htlc.path)
+	//	if err != nil {
+	//		fmt.Printf("faced err:%v ", err)
+	//		return
+	//	}
 	// 如果不是
-	r.Printf("这是：%v的 onHTLCFUllFill\n", r.ID)
-	if r.ID != htlc.sender {
-		if hff.success == true {
-			r.updateLinkValue(r.ID, htlc.upper, htlc.amount, ADD)
-		} else {
-			r.updateLinkValue(htlc.upper, r.ID, htlc.amount, ADD)
-		}
-		r.sendMsg(htlc.upper, hff)
-	} else {
+	//r.Printf("这是：%v的 onHTLCFUllFill\n", r.ID)
+
+	index := findIndexInPath(r.ID, htlc.path, !htlc.ffOnece)
+
+	if r.ID == htlc.sender && index == 0 {
 		r.htlcPool[hff.requestID] <- hff
 		return
+	} else {
+		var upperID RouteID
+		if index == 0 {
+			upperID = htlc.sender
+		} else {
+			upperID = htlc.path[index-1]
+		}
+		if hff.success == true {
+			r.updateLinkValue(r.ID, upperID, htlc.amount, ADD)
+		} else {
+			r.updateLinkValue(upperID, r.ID, htlc.amount, ADD)
+		}
+		htlc.ffOnece = false
+		r.sendMsg(upperID, hff)
 	}
 }
 
 func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
-	addr,ok := r.AddrWithRoots[awr.root]
+	addr, ok := r.AddrWithRoots[awr.root]
 	changed := false
 	if !ok || addr.Time < awr.time {
 		changed = true
@@ -425,7 +451,6 @@ func NotifyRooterReset(roots []RouteID, routerBase map[RouteID]*SWRouter) {
 				src:  root,
 			})
 		}
-		//time.Sleep(2 * time.Second)
 	}
 }
 
@@ -500,8 +525,8 @@ func (r *SWRouter) sendMsg(id RouteID, msg interface{}) {
 	r.RouterBase[id].MsgPool <- msg
 }
 
-func (r *SWRouter)Printf(string string, a ...interface{})  {
-	fmt.Printf("R"+strconv.Itoa(int(r.ID))+":" + string, a...)
+func (r *SWRouter) Printf(string string, a ...interface{}) {
+	fmt.Printf("R"+strconv.Itoa(int(r.ID))+":"+string, a...)
 }
 
 // TODO(xuehan): add error return

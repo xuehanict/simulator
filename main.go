@@ -11,9 +11,7 @@ import (
 )
 
 func main()  {
-
 	testSW()
-
 }
 
 func testSW()  {
@@ -75,9 +73,7 @@ func testSW()  {
 		}
 	}
 
-
-	fmt.Printf("send result%v\n",nodes[1].SendPayment(8, 100))
-
+	fmt.Printf("send result%v\n",nodes[2].SendPayment(1, 100))
 
 	for {
 		fmt.Printf("1111")
@@ -90,6 +86,11 @@ func testSW()  {
 	}
 	wg.Wait()
 }
+
+func testSWBigData() {
+
+}
+
 
 
 

@@ -1,11 +1,11 @@
 package silentWhisper
 
 import (
-	"math/rand"
-	"time"
 	"bytes"
-	"strconv"
+	"math/rand"
 	"sort"
+	"strconv"
+	"time"
 )
 
 // 生成一定长度的随机字符串
@@ -31,8 +31,8 @@ func getDis(neighbour, dest string, lenthInterval int) int {
 	for ; cpl < depthD && cpl < depthN &&
 		bytes.Equal(neiBytes[0:lenthInterval],
 			destBytes[0:lenthInterval]); cpl++ {
-			neiBytes = neiBytes[lenthInterval:]
-			destBytes = destBytes[lenthInterval:]
+		neiBytes = neiBytes[lenthInterval:]
+		destBytes = destBytes[lenthInterval:]
 	}
 	return depthN + depthD - (2 * cpl)
 }
@@ -42,11 +42,11 @@ func GetLinkKey(r1, r2 RouteID) string {
 	return strconv.Itoa(int(r1)) + "-" + strconv.Itoa(int(r2))
 }
 
-func randomPartition (amount float64, num int) []float64 {
-	res := make([]float64,num)
+func randomPartition(amount float64, num int) []float64 {
+	res := make([]float64, num)
 	rate := make([]float64, num)
 
-	for i:= 0; i < num - 1; i++ {
+	for i := 0; i < num-1; i++ {
 		rate[i] = rand.Float64()
 	}
 	rate[num-1] = 1
@@ -67,11 +67,11 @@ func minPart(amount float64, mins []float64) []float64 {
 	if len(res) == 0 {
 		return nil
 	}
-	for ; remainder > 0; {
+	for remainder > 0 {
 		remainder = 0
-		for i:=0; i<len(res); i++ {
-			if res[i] > mins[i]{
-				remainder = remainder + res[i] -mins[i]
+		for i := 0; i < len(res); i++ {
+			if res[i] > mins[i] {
+				remainder = remainder + res[i] - mins[i]
 				res[i] = mins[i]
 				saturated[i] = struct{}{}
 			}
@@ -81,22 +81,21 @@ func minPart(amount float64, mins []float64) []float64 {
 			return nil
 		} else {
 			if remainder > 0 {
-				 adds := randomPartition(remainder, len(mins)-len(saturated))
-				 k := 0
-				 for i:=0;i<len(adds);i++{
-				 	for {
-				 		if _, ok := saturated[k]; ok {
-				 			k++
+				adds := randomPartition(remainder, len(mins)-len(saturated))
+				k := 0
+				for i := 0; i < len(adds); i++ {
+					for {
+						if _, ok := saturated[k]; ok {
+							k++
 						} else {
 							break
 						}
 					}
 					res[k] = res[k] + adds[i]
 					k++
-				 }
+				}
 			}
 		}
 	}
 	return res
 }
-
