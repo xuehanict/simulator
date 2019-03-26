@@ -166,10 +166,10 @@ func testSWBigData() {
 		}
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
+		fmt.Printf("success:%v\n", success)
 	}
 
 	fmt.Printf("total :%v\n", total)
-	fmt.Printf("success:%v\n", success)
 
 
 	for {
