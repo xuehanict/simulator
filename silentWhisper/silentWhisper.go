@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	//"github.com/davecgh/go-spew/spew"
 )
 
 type RouteID int
@@ -155,10 +156,6 @@ func (r *SWRouter) onMsg(msg interface{}) {
 }
 
 func (r *SWRouter) onPayReq(req *payReq) {
-	if r.ID == 3 {
-		fmt.Printf("12")
-	}
-
 	path := append(req.path, r.ID)
 	rootIndex := findIndexInPath(req.root, path, true)
 	// 到目的地了,并且已经经过了root节点
@@ -294,19 +291,24 @@ out:
 		select {
 		case res := <-r.payRequestPool[requestID]:
 			if res.success == false {
-				return fmt.Errorf("probe failed")
+				return fmt.Errorf("probe failed\n")
 			}
 			resArray = append(resArray, res)
 			mins = append(mins, res.value)
 			if len(resArray) == len(r.Roots) {
+				//spew.Dump(resArray)
 				break out
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(20 * time.Second):
 			return fmt.Errorf("probe failed, timeout")
 		}
 	}
 
 	splitedAmts := minPart(amount, mins)
+	if splitedAmts == nil {
+		return fmt.Errorf("钱不够\n")
+	}
+	r.Printf("分成多少钱：%v\n", splitedAmts)
 	r.htlcBase[requestID] = make(map[RouteID]*htlc)
 	for i, amt := range splitedAmts {
 		htlc := &htlc{
@@ -337,7 +339,7 @@ out:
 			if hffLen == len(r.Roots) {
 				return nil
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(1 * time.Second):
 			return fmt.Errorf(" timeout for payment")
 		}
 	}
@@ -436,21 +438,22 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 }
 
 func NotifyRooterReset(roots []RouteID, routerBase map[RouteID]*SWRouter) {
-	time := time.Now().Unix()
+	time_ := time.Now().Unix()
 	for _, root := range roots {
 		rootRouter := routerBase[root]
 		rootRouter.AddrWithRoots[root] = &addrType{
 			Addr: "",
-			Time: time,
+			Time: time_,
 		}
 		for n := range rootRouter.Neighbours {
 			rootRouter.sendMsg(n, &addrWithRoot{
 				root: root,
 				addr: "",
-				time: time,
+				time: time_,
 				src:  root,
 			})
 		}
+		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -493,7 +496,6 @@ func (r *SWRouter) GetNextHop(dest string, root RouteID,
 	if upOrDown == UP {
 		return r.AddrWithRoots[root].Parent
 	} else {
-
 		// TODO(xuehan): 这里应该改成从邻居实时pull地址
 		bestCpl := getCPL(dest, r.AddrWithRoots[root].Addr, 4)
 		for n := range r.Neighbours {
@@ -521,7 +523,7 @@ func getCPL(addr1, addr2 string, interval int) int {
 }
 
 func (r *SWRouter) sendMsg(id RouteID, msg interface{}) {
-	r.Printf("发送消息:%v 到%v\n", msg, id)
+	//r.Printf("发送消息:%v 到%v\n", msg, id)
 	r.RouterBase[id].MsgPool <- msg
 }
 
