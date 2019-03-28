@@ -121,8 +121,8 @@ func testSWBigData() {
 		link := &sw.Link{
 			Part1: sw.RouteID(id1),
 			Part2: sw.RouteID(id2),
-			Val1: v2 - v1,
-			Val2: v3 - v2,
+			Val1: v3 - v2,
+			Val2: v2 - v1,
 		}
 		links[sw.GetLinkKey(link.Part1,link.Part2)] = link
 	}

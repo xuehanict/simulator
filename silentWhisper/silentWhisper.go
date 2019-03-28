@@ -339,8 +339,8 @@ out:
 			if hffLen == len(r.Roots) {
 				return nil
 			}
-		case <-time.After(1 * time.Second):
-			return fmt.Errorf(" timeout for payment")
+		case <-time.After(2 * time.Second):
+			return fmt.Errorf(" timeout for get hff")
 		}
 	}
 	return nil
@@ -358,7 +358,6 @@ func newHTLC(h *htlc) *htlc {
 }
 
 func findIndexInPath(id RouteID, path []RouteID, dir bool) int {
-
 	if dir == true {
 		for index, node := range path {
 			if node == id {
@@ -372,7 +371,6 @@ func findIndexInPath(id RouteID, path []RouteID, dir bool) int {
 			}
 		}
 	}
-
 	return -1
 }
 
