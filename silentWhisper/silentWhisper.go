@@ -6,10 +6,13 @@ import (
 	"strconv"
 	"time"
 	//"github.com/davecgh/go-spew/spew"
+	"log"
 )
 
 type RouteID int
 type RequestID string
+
+var SWLogger *log.Logger
 
 const (
 	UP              = true
@@ -57,6 +60,7 @@ type payRes struct {
 	success   bool
 	path      []RouteID
 	value     float64
+	reason    string
 }
 
 type htlc struct {
@@ -122,11 +126,9 @@ func NewSwRouter(id RouteID, roots []RouteID,
 func (r *SWRouter) Start() {
 	mesNum := 0
 	for {
-		mesNum++
 		select {
 		case msg := <-r.MsgPool:
 			r.onMsg(msg)
-			mesNum--
 		case <-r.quit:
 			r.Printf("mesNum is %v\n", mesNum)
 			return
@@ -148,6 +150,7 @@ func (r *SWRouter) onMsg(msg interface{}) {
 	case *htlc:
 		r.onHTLC(msg.(*htlc))
 	case *htlcFullfill:
+		SWLogger.Printf("R%v收到hff %v", r.ID, msg.(*htlcFullfill))
 		r.onHTLCFullfill(msg.(*htlcFullfill))
 	case *addrWithRoot:
 		//r.Printf("调用onAddrWithRoot\n")
@@ -177,13 +180,21 @@ func (r *SWRouter) onPayReq(req *payReq) {
 		nextHop := r.GetNextHop(req.dest, req.root, req.upOrDown)
 		//req.path = append(req.path, r.ID)
 		linkValue, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
-		if nextHop == -1 || err != nil {
+		if nextHop == -1 {
 			r.sendMsg(req.sender, &payRes{
 				success:   false,
 				requestID: req.requestID,
 				path:      path,
+				reason:    "cann't find next hop",
 			})
-		} else {
+		} else if err != nil {
+			r.sendMsg(req.sender, &payRes{
+				success:   false,
+				requestID: req.requestID,
+				path:      path,
+				reason:    err.Error(),
+			})
+		}else {
 			if req.value > linkValue {
 				req.value = linkValue
 			}
@@ -203,7 +214,11 @@ func (r *SWRouter) onHTLC(h *htlc) {
 		r.htlcBase[h.requestID] = make(map[RouteID]*htlc)
 		dir = true
 	} else {
-		dir = false
+		if _, ok :=r.htlcBase[h.requestID][h.root]; !ok {
+			dir = true
+		} else {
+			dir = false
+		}
 	}
 	r.htlcBase[h.requestID][h.root] = newHTLC(h)
 	value := h.amount
@@ -211,7 +226,6 @@ func (r *SWRouter) onHTLC(h *htlc) {
 	root := h.root
 	path := h.path
 	index := findIndexInPath(r.ID, path, dir)
-
 	// 到达目的地了
 	if index == len(path)-1 {
 		hff := &htlcFullfill{
@@ -291,7 +305,7 @@ out:
 		select {
 		case res := <-r.payRequestPool[requestID]:
 			if res.success == false {
-				return fmt.Errorf("probe failed\n")
+				return fmt.Errorf("probe failed, not successful")
 			}
 			resArray = append(resArray, res)
 			mins = append(mins, res.value)
@@ -299,7 +313,7 @@ out:
 				//spew.Dump(resArray)
 				break out
 			}
-		case <-time.After(20 * time.Second):
+		case <-time.After(2 * time.Second):
 			return fmt.Errorf("probe failed, timeout")
 		}
 	}
