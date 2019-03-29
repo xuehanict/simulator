@@ -25,6 +25,7 @@ const (
 	HTLC_CLEAR_TIME = 10
 	MESSAGE_BUFFER  = 10000
 	PAY_RES_BUFFER  = 10
+	ADDR_INTERVAL   = 8
 )
 
 /*
@@ -437,13 +438,13 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	if !ok || addr.Time < awr.time {
 		changed = true
 	} else if addr.Time == awr.time &&
-		len(addr.Addr) > len(awr.addr)+4 {
+		len(addr.Addr) > len(awr.addr)+ ADDR_INTERVAL {
 		changed = true
 	}
 	if changed {
 		addr = &addrType{
 			Time:   awr.time,
-			Addr:   awr.addr + GetRandomString(4),
+			Addr:   awr.addr + GetRandomString(ADDR_INTERVAL),
 			Parent: awr.src,
 		}
 		r.AddrWithRoots[awr.root] = addr
@@ -519,10 +520,10 @@ func (r *SWRouter) GetNextHop(dest string, root RouteID,
 		return r.AddrWithRoots[root].Parent
 	} else {
 		// TODO(xuehan): 这里应该改成从邻居实时pull地址
-		bestCpl := getCPL(dest, r.AddrWithRoots[root].Addr, 4)
+		bestCpl := getCPL(dest, r.AddrWithRoots[root].Addr, ADDR_INTERVAL)
 		for n := range r.Neighbours {
 			cpl := getCPL(r.RouterBase[n].AddrWithRoots[root].Addr,
-				dest, 4)
+				dest, ADDR_INTERVAL)
 			if cpl > bestCpl {
 				return n
 			}
