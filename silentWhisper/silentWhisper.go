@@ -7,6 +7,7 @@ import (
 	"time"
 	//"github.com/davecgh/go-spew/spew"
 	"log"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type RouteID int
@@ -124,13 +125,11 @@ func NewSwRouter(id RouteID, roots []RouteID,
 }
 
 func (r *SWRouter) Start() {
-	mesNum := 0
 	for {
 		select {
 		case msg := <-r.MsgPool:
 			r.onMsg(msg)
 		case <-r.quit:
-			r.Printf("mesNum is %v\n", mesNum)
 			return
 		}
 	}
@@ -150,10 +149,9 @@ func (r *SWRouter) onMsg(msg interface{}) {
 	case *htlc:
 		r.onHTLC(msg.(*htlc))
 	case *htlcFullfill:
-		SWLogger.Printf("R%v收到hff %v", r.ID, msg.(*htlcFullfill))
+	//	SWLogger.Printf("R%v收到hff %v", r.ID, msg.(*htlcFullfill))
 		r.onHTLCFullfill(msg.(*htlcFullfill))
 	case *addrWithRoot:
-		//r.Printf("调用onAddrWithRoot\n")
 		r.onAddrWithRoot(msg.(*addrWithRoot))
 	}
 }
@@ -181,6 +179,17 @@ func (r *SWRouter) onPayReq(req *payReq) {
 		//req.path = append(req.path, r.ID)
 		linkValue, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
 		if nextHop == -1 {
+			SWLogger.Printf("router %v handle payreq failed, because" +
+				"cann't find the nexthop", r.ID)
+			SWLogger.Printf("router %v root %v addr is %v",
+				r.ID, req.root, spew.Sdump(r.AddrWithRoots[req.root]))
+
+			SWLogger.Printf("router %v payreq is %s\n", r.ID,spew.Sdump(req))
+			for n := range r.Neighbours {
+				SWLogger.Printf("router %v 邻居root %v 的地址是：%s\n",
+					r.ID, n, spew.Sdump(r.RouterBase[n].AddrWithRoots[req.root]))
+			}
+
 			r.sendMsg(req.sender, &payRes{
 				success:   false,
 				requestID: req.requestID,
@@ -188,6 +197,7 @@ func (r *SWRouter) onPayReq(req *payReq) {
 				reason:    "cann't find next hop",
 			})
 		} else if err != nil {
+			SWLogger.Printf("handle payreq failed, because :%v ", err)
 			r.sendMsg(req.sender, &payRes{
 				success:   false,
 				requestID: req.requestID,

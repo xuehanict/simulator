@@ -132,7 +132,7 @@ func testSWBigData() {
 		links[sw.GetLinkKey(link.Part1,link.Part2)] = link
 	}
 
-	roots := []sw.RouteID{43788,59333, 100, 500 }
+	roots := []sw.RouteID{43788,5933, 100}
 	nodes := make(map[sw.RouteID]*sw.SWRouter, 0)
 	for i:=0; i<67149; i++ {
 		router := sw.NewSwRouter(sw.RouteID(i),roots, nodes, links)
@@ -143,9 +143,11 @@ func testSWBigData() {
 		nodes[edge.Part1].Neighbours[edge.Part2] = struct{}{}
 		nodes[edge.Part2].Neighbours[edge.Part1] = struct{}{}
 	}
+
 	wg := sync.WaitGroup{}
 	for _,r := range nodes {
 		go r.Start()
+		wg.Add(1)
 		fmt.Printf("router %v start\n", r.ID)
 	}
 
@@ -170,6 +172,9 @@ func testSWBigData() {
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
 		fmt.Printf("success:%v\n", success)
+		if total == 10000 {
+			break
+		}
 	}
 
 	fmt.Printf("total :%v\n", total)
