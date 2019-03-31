@@ -12,6 +12,7 @@ import (
 
 const (
 	tenNodesGraph = "data/ten_nodes.json"
+	tenNodesGraphHalf = "data/ten_nodes_half.json"
 )
 
 /**

@@ -40,7 +40,7 @@ type Link struct {
 	Val2  float64
 }
 
-type addrType struct {
+type AddrType struct {
 	Addr   string
 	Parent RouteID
 	Time   int64
@@ -92,7 +92,7 @@ type addrWithRoot struct {
 
 type SWRouter struct {
 	ID             RouteID
-	AddrWithRoots  map[RouteID]*addrType
+	AddrWithRoots  map[RouteID]*AddrType
 	Roots          []RouteID
 	Neighbours     map[RouteID]struct{}
 	RouterBase     map[RouteID]*SWRouter
@@ -110,7 +110,7 @@ func NewSwRouter(id RouteID, roots []RouteID,
 	linkBase map[string]*Link) *SWRouter {
 	router := &SWRouter{
 		ID:             id,
-		AddrWithRoots:  make(map[RouteID]*addrType),
+		AddrWithRoots:  make(map[RouteID]*AddrType),
 		Roots:          roots,
 		Neighbours:     make(map[RouteID]struct{}),
 		RouterBase:     routerBase,
@@ -179,6 +179,7 @@ func (r *SWRouter) onPayReq(req *payReq) {
 		nextHop := r.GetNextHop(req.dest, req.root, req.upOrDown)
 		//req.path = append(req.path, r.ID)
 		linkValue, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
+
 		if nextHop == -1 {
 			SWLogger.Printf("router %v handle payreq failed, because" +
 				"cann't find the nexthop", r.ID)
@@ -285,6 +286,8 @@ func (r *SWRouter) SendPayment(dest RouteID, amount float64) error {
 		} else {
 			dir = UP
 		}
+		//SWLogger.Printf("Router %v addr with root %v is %v",
+		//	r.ID, root, spew.Sdump(destAddr))
 		nextHop := r.GetNextHop(destAddr.Addr, root, dir)
 		if nextHop == -1 {
 			return fmt.Errorf("send payment failed, " +
@@ -442,7 +445,7 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 		changed = true
 	}
 	if changed {
-		addr = &addrType{
+		addr = &AddrType{
 			Time:   awr.time,
 			Addr:   awr.addr + GetRandomString(ADDR_INTERVAL),
 			Parent: awr.src,
@@ -464,7 +467,7 @@ func NotifyRooterReset(roots []RouteID, routerBase map[RouteID]*SWRouter) {
 	time_ := time.Now().Unix()
 	for _, root := range roots {
 		rootRouter := routerBase[root]
-		rootRouter.AddrWithRoots[root] = &addrType{
+		rootRouter.AddrWithRoots[root] = &AddrType{
 			Addr: "",
 			Time: time_,
 		}
@@ -524,7 +527,8 @@ func (r *SWRouter) GetNextHop(dest string, root RouteID,
 		for n := range r.Neighbours {
 			cpl := getCPL(r.RouterBase[n].AddrWithRoots[root].Addr,
 				dest, ADDR_INTERVAL)
-			if cpl > bestCpl {
+			// 这个地方和模拟器中代码不一样
+			if cpl == bestCpl + 1 && r.RouterBase[n].AddrWithRoots[root].Parent == r.ID{
 				return n
 			}
 		}
