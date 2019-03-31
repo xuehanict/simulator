@@ -146,9 +146,7 @@ func testSWTree()  {
 	}
 
 	//sw.NotifyRooterReset(roots, nodes)
-	createTree(nodes, edges, 3)
-
-
+	createTree(nodes, edges, roots)
 
 	for i := 0 ;i< 2; i++ {
 		time.Sleep(1 * time.Second)
@@ -240,20 +238,18 @@ func testSWBigData() {
 
 	time.Sleep(3 * time.Second)
 //	sw.NotifyRooterReset(roots, nodes)
-	createTree(nodes, links, 43788)
-	createTree(nodes, links, 5399)
-	createTree(nodes, links, 100)
-	createTree(nodes, links, 500)
-	createTree(nodes, links, 53800)
+	createTree(nodes, links, roots)
+
 
 	for i := 0 ;i< 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
 
-	trans := generateTrans("data/finalSets/static/sampleTr-0.txt")
+	trans := generateTrans("data/finalSets/static/sampleTr-1.txt")
 	total := 0
 	success := 0
+
 	for _, tran := range trans{
 		total ++
 		err := nodes[sw.RouteID(tran.src)].SendPayment(sw.RouteID(tran.dest), tran.val)
@@ -264,7 +260,12 @@ func testSWBigData() {
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
 		fmt.Printf("success:%v\n", success)
-		if total == 10000 {
+		if total % 1000 == 0 {
+			// 重构
+			clearTree(nodes, roots)
+			createTree(nodes,links,roots)
+		}
+		if total == 50000 {
 			break
 		}
 	}
