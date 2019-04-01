@@ -615,7 +615,7 @@ out:
 			neiAddrBytes := []byte(res.addr)
 			selfAddrBytes := []byte(r.AddrWithRoots[resetAddrRoot].Addr)
 			// 判断是否是孩子节点发来的，如果是，则忽略，并且添加到children中，以通知其
-			if bytes.Equal(selfAddrBytes,
+			if len(neiAddrBytes) > 0 && bytes.Equal(selfAddrBytes,
 				neiAddrBytes[0:len(neiAddrBytes)-ADDR_LENGTH_INTERVAL]) {
 				children = append(children, res.resSrc)
 				if resNum == len(r.Neighbours) {

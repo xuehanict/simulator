@@ -347,7 +347,7 @@ func testSMTree()  {
 		}
 	}
 
-	fmt.Printf("send result%v\n",nodes[2].SendPayment(10, 100))
+	fmt.Printf("send result%v\n",nodes[7].SendPayment(3, 100))
 
 	time.Sleep(3 * time.Second)
 
