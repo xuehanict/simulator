@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"math/rand"
 	"log"
-	"github.com/davecgh/go-spew/spew"
+//	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -152,8 +152,9 @@ func (r *SMRouter) onAddrMap(am *addrMap) {
 
 func (r *SMRouter) onPayReq(req *payReq) {
 
-	SMLogger.Printf("R %v received payreq :%v ",r.ID, spew.Sdump(req))
+//	SMLogger.Printf("R %v received payreq :%v ",r.ID, spew.Sdump(req))
 
+	SMLogger.Printf("R %v received payreq", r.ID)
 	val := req.value
 	root := req.root
 	dest := req.dest
@@ -187,7 +188,16 @@ func (r *SMRouter) onPayReq(req *payReq) {
 		nextHop, err := r.getNeighbourToSend(root, dest, val)
 		if err != nil {
 			// TODO(xuehan): add log
-			SMLogger.Panicf("raise error:%v", err)
+			SMLogger.Printf("R %v raise error:%v",r.ID, err)
+			res := &payRes{
+				success:   false,
+				sender:    req.sender,
+				requestID: req.requestID,
+				val:       req.value,
+				root:      req.root,
+			}
+			r.sendMsg(req.upperHop, res)
+			return
 		}
 		r.updateLinkValue(r.ID, nextHop, req.value, SUB)
 		newProbe := &probeInfo{
@@ -211,7 +221,8 @@ func (r *SMRouter) onPayReq(req *payReq) {
 }
 
 func (r *SMRouter) onPayRes(res *payRes) {
-	SMLogger.Printf("R %v recieved payres %v ",r.ID, spew.Sdump(res))
+//	SMLogger.Printf("R %v recieved payres %v ",r.ID, spew.Sdump(res))
+	SMLogger.Printf("R %v recieved payres",r.ID)
 	probe := r.probeBase[res.requestID][res.root]
 	if res.sender == r.ID {
 		r.payRequestPool[res.requestID] <- res
@@ -306,7 +317,7 @@ out:
 			if len(resArray) == len(r.Roots) {
 				break out
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(1 * time.Second):
 			return fmt.Errorf("probe failed, timeout")
 		}
 	}

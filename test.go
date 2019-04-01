@@ -359,7 +359,115 @@ func testSMTree()  {
 }
 
 func testSMBigData()  {
-	
+	file := "./" + time.Now().Format("2006-01-02 15:04:05") + ".txt"
+	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
+	if nil != err {
+		panic(err)
+	}
+	sm.SMLogger = log.New(logFile, "SMRN ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	f, err := os.Open("data/finalSets/static/ripple-lcc.graph_CREDIT_LINKS")
+	if err != nil {
+		fmt.Println("os Open error: ", err)
+		return
+	}
+	defer f.Close()
+	defer logFile.Close()
+
+
+	br := bufio.NewReader(f)
+	lineNum := 1
+	links := make(map[string]*sm.Link,0)
+	for {
+		line, _, err := br.ReadLine()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Println("br ReadLine error: ", err)
+			return
+		}
+		//
+		if lineNum < 5 {
+			lineNum ++
+			continue
+		}
+
+		splitted := strings.Split(string(line), " ")
+		id1, _ := strconv.Atoi(splitted[0])
+		id2, _ := strconv.Atoi(splitted[1])
+		v1, _ := strconv.ParseFloat(splitted[2],64)
+		v2,_ := strconv.ParseFloat(splitted[3], 64)
+		v3,_ := strconv.ParseFloat(splitted[4], 64)
+		link := &sm.Link{
+			Part1: sm.RouteID(id1),
+			Part2: sm.RouteID(id2),
+			Val1: v3 - v2,
+			Val2: v2 - v1,
+		}
+		links[sm.GetLinkKey(link.Part1,link.Part2)] = link
+	}
+
+	roots := []sm.RouteID{43788}
+	nodes := make(map[sm.RouteID]*sm.SMRouter, 0)
+	for i:=0; i<67149; i++ {
+		router := sm.NewSMRouter(sm.RouteID(i), roots, nodes, links)
+		nodes[sm.RouteID(i)] = router
+	}
+
+	for _, edge := range links {
+		nodes[edge.Part1].Neighbours[edge.Part2] = struct{}{}
+		nodes[edge.Part2].Neighbours[edge.Part1] = struct{}{}
+	}
+
+	fmt.Printf("数据解析完成\n")
+	wg := sync.WaitGroup{}
+	for _,r := range nodes {
+		go r.Start()
+		wg.Add(1)
+		fmt.Printf("router %v start\n", r.ID)
+	}
+
+	time.Sleep(3 * time.Second)
+//	sw.NotifyRooterReset(roots, nodes)
+	createTreeSM(nodes, links, roots)
+
+
+	for i := 0 ;i< 2; i++ {
+		time.Sleep(1 * time.Second)
+		fmt.Printf("wait 1s\n")
+	}
+
+	trans := generateTrans("data/finalSets/static/sampleTr-1.txt")
+	total := 0
+	success := 0
+
+	for _, tran := range trans{
+		total ++
+		err := nodes[sm.RouteID(tran.src)].SendPayment(sm.RouteID(tran.dest), tran.val)
+		if err == nil {
+			success++
+		}
+
+		fmt.Printf("err :%v\n", err)
+		fmt.Printf("total:%v\n", total)
+		fmt.Printf("success:%v\n", success)
+		if total % 1000 == 0 {
+			// 重构
+			clearTreeSM(nodes, roots)
+			createTreeSM(nodes,links,roots)
+		}
+		if total == 50000 {
+			break
+		}
+	}
+
+	fmt.Printf("total :%v\n", total)
+
+	for _,node := range nodes{
+		node.Stop()
+		wg.Done()
+	}
+	wg.Wait()
 }
 
 

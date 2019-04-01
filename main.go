@@ -6,7 +6,7 @@ import (
 
 func main()  {
 
-	testCase := 4
+	testCase := 5
 
 	switch testCase {
 	case 1:
@@ -17,6 +17,8 @@ func main()  {
 		testSWTree()
 	case 4:
 		testSMTree()
+	case 5:
+		testSMBigData()
 	}
 //	testSW()
 //	testSWBigData()
