@@ -305,7 +305,7 @@ func testSMTree()  {
 		os.Exit(1)
 	}
 
-	roots := []sm.RouteID{3,5}
+	roots := []sm.RouteID{3,5,8}
 	for _, node := range g.Nodes{
 		router := sm.NewSMRouter(sm.RouteID(node.Id),roots, nodes, edges)
 		nodes[sm.RouteID(node.Id)] = router

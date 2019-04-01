@@ -187,7 +187,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 		nextHop, err := r.getNeighbourToSend(root, dest, val)
 		if err != nil {
 			// TODO(xuehan): add log
-			fmt.Printf("raise error:%v", err)
+			SMLogger.Panicf("raise error:%v", err)
 		}
 		r.updateLinkValue(r.ID, nextHop, req.value, SUB)
 		newProbe := &probeInfo{
@@ -289,6 +289,9 @@ func (r *SMRouter) SendPayment(dest RouteID, amount float64) error {
 		r.updateLinkValue(r.ID, nextHop, splittedAmounts[i], SUB)
 		r.sendMsg(nextHop, payreq)
 	}
+
+	SMLogger.Printf("总数%v,分成%v", amount, splittedAmounts)
+
 
 	resArray := make([]*payRes, 0)
 out:

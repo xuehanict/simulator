@@ -103,8 +103,8 @@
     {
       "node_1": 5,
       "node_2": 8,
-      "capacity1": 0,
-      "capacity2": 100
+      "capacity1": 100,
+      "capacity2": 0
     }
   ]
 }
