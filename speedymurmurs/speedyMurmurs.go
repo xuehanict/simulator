@@ -6,6 +6,8 @@ import (
 	"time"
 	"bytes"
 	"math/rand"
+	"log"
+	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -14,6 +16,7 @@ const (
 
 	PAYMENT_REQUESTID_LENGTH = 10
 	ADDR_REQUESTID_LENGTH    = 10
+	ADDR_LENGTH_INTERVAL     = 8
 
 	CLEAN_PROBE_INTERVAL = 20
 	PROBE_STORE_TIME     = 3600
@@ -26,12 +29,16 @@ const (
 	PAYMENT_POOL_CAPCITY = 100
 )
 
+var SMLogger *log.Logger
+
 type RouteID int
 type RequestID string
 
+
+
 type SMRouter struct {
 	ID              RouteID
-	AddrWithRoots   map[RouteID]*addrType
+	AddrWithRoots   map[RouteID]*AddrType
 	Roots           []RouteID
 	Neighbours      map[RouteID]struct{}
 	RouterBase      map[RouteID]*SMRouter
@@ -45,15 +52,15 @@ type SMRouter struct {
 }
 
 /*
- * val1 指part1往part2方向的通道容量
- * val2 指part2往part1方向的通道容量
- * part1 的id 小于part2的id
+ * Val1 指Part1往Part2方向的通道容量
+ * Val2 指Part2往Part1方向的通道容量
+ * Part1 的id 小于Part2的id
  */
 type Link struct {
-	part1 RouteID
-	part2 RouteID
-	val1  float64
-	val2  float64
+	Part1 RouteID
+	Part2 RouteID
+	Val1  float64
+	Val2  float64
 }
 
 type probeInfo struct {
@@ -66,13 +73,13 @@ type probeInfo struct {
 	destAddr  string
 }
 
-type addrType struct {
-	addr   string
-	parent RouteID
+type AddrType struct {
+	Addr   string
+	Parent RouteID
 }
 
 
-func (r *SMRouter) start() {
+func (r *SMRouter) Start() {
 	for {
 		select {
 		case msg := <-r.MsgPool:
@@ -86,7 +93,7 @@ func (r *SMRouter) start() {
 	}
 }
 
-func (r *SMRouter) stop() {
+func (r *SMRouter) Stop() {
 	close(r.quit)
 }
 
@@ -106,21 +113,21 @@ func (r *SMRouter) onMsg(msg interface{}) {
 		r.onResetAddrReq(msg.(*addrReq))
 	case *addrResetNoti:
 		r.onNotifyReset(msg.(*addrResetNoti))
-	case *payment:
-		r.onPayment(msg.(*payment))
+	case *Payment:
+		r.onPayment(msg.(*Payment))
 	}
 }
 
 /*
 func (r *SMRouter) onLinkAdd(add *Link) {
-	// 如果part1是自己，那么part2就是对方
+	// 如果Part1是自己，那么Part2就是对方
 	var neighbour RouteID
-	if add.part1 == r.ID {
-		r.Neighbours[add.part2] = struct{}{}
-		neighbour = add.part2
+	if add.Part1 == r.ID {
+		r.Neighbours[add.Part2] = struct{}{}
+		neighbour = add.Part2
 	} else {
-		r.Neighbours[add.part1] = struct{}{}
-		neighbour = add.part2
+		r.Neighbours[add.Part1] = struct{}{}
+		neighbour = add.Part2
 	}
 
 	// 发送这个当前节点的各个树的地址到邻居
@@ -144,12 +151,15 @@ func (r *SMRouter) onAddrMap(am *addrMap) {
 */
 
 func (r *SMRouter) onPayReq(req *payReq) {
+
+	SMLogger.Printf("R %v received payreq :%v ",r.ID, spew.Sdump(req))
+
 	val := req.value
 	root := req.root
 	dest := req.dest
 
 	// 如果自己就是dest节点
-	if dest == r.AddrWithRoots[root].addr {
+	if dest == r.AddrWithRoots[root].Addr {
 		res := &payRes{
 			success:   true,
 			sender:    req.sender,
@@ -180,7 +190,6 @@ func (r *SMRouter) onPayReq(req *payReq) {
 			fmt.Printf("raise error:%v", err)
 		}
 		r.updateLinkValue(r.ID, nextHop, req.value, SUB)
-		req.upperHop = r.ID
 		newProbe := &probeInfo{
 			value:     req.value,
 			requestID: req.requestID,
@@ -190,6 +199,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 			nextHop:   nextHop,
 			destAddr:  req.dest,
 		}
+		req.upperHop = r.ID
 		if _, ok := r.probeBase[req.requestID]; ok {
 			r.probeBase[req.requestID][req.root] = newProbe
 		} else {
@@ -201,6 +211,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 }
 
 func (r *SMRouter) onPayRes(res *payRes) {
+	SMLogger.Printf("R %v recieved payres %v ",r.ID, spew.Sdump(res))
 	probe := r.probeBase[res.requestID][res.root]
 	if res.sender == r.ID {
 		r.payRequestPool[res.requestID] <- res
@@ -213,20 +224,25 @@ func (r *SMRouter) onPayRes(res *payRes) {
 	}
 }
 
-func (r *SMRouter) onPayment(pay *payment) {
+func (r *SMRouter) onPayment(pay *Payment) {
 	probe := r.probeBase[pay.requestID][pay.root]
-	if probe.destAddr != r.AddrWithRoots[pay.root].addr {
-		remoteOldVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
+	SMLogger.Printf("R %v recieve payment %v", r.ID, pay)
+
+	if probe.destAddr != r.AddrWithRoots[pay.root].Addr {
+		//remoteOldVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
 		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
-		remoteNewVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
+		//remoteNewVal, _:= r.getLinkValue(probe.nextHop, LINK_DIR_LEFT)
 		// 让远程节点检查是否需要重构
-		r.RouterBase[probe.nextHop].monitorLinkChange(remoteOldVal, remoteNewVal, r.ID)
+		//r.RouterBase[probe.nextHop].monitorLinkChange(remoteOldVal, remoteNewVal, r.ID)
 
-		selfNewValue, _ := r.getLinkValue(probe.nextHop, LINK_DIR_RIGHT)
-		selfOldValue := selfNewValue - probe.value
+		//selfNewValue, _ := r.getLinkValue(probe.nextHop, LINK_DIR_RIGHT)
+		//selfOldValue := selfNewValue - probe.value
 		// 本地节点检查是否需要重构
-		r.monitorLinkChange(selfOldValue, selfNewValue, probe.nextHop)
+		//r.monitorLinkChange(selfOldValue, selfNewValue, probe.nextHop)
 
+	}
+	if r.AddrWithRoots[probe.root].Addr != probe.destAddr {
+		r.sendMsg(probe.nextHop,pay)
 	}
 	delete(r.probeBase[pay.requestID], pay.root)
 	if len(r.probeBase[pay.requestID]) == 0 {
@@ -234,14 +250,15 @@ func (r *SMRouter) onPayment(pay *payment) {
 	}
 }
 
-func (r *SMRouter) sendPayment(dest RouteID, amount float64) error {
+func (r *SMRouter) SendPayment(dest RouteID, amount float64) error {
 
 	splittedAmounts := randomPartition(amount, len(r.Roots))
 	neighboursToSend := make([]RouteID, len(r.Roots))
-	destAddr := r.RouterBase[dest].AddrWithRoots[dest]
 	requestID := RequestID(GetRandomString(PAYMENT_REQUESTID_LENGTH))
+	r.payRequestPool[requestID] = make(chan *payRes, PAYMENT_POOL_CAPCITY)
 	for i, root := range r.Roots {
-		nextHop, err := r.getNeighbourToSend(root, destAddr.addr, splittedAmounts[i])
+		destAddr := r.RouterBase[dest].AddrWithRoots[root]
+		nextHop, err := r.getNeighbourToSend(root, destAddr.Addr, splittedAmounts[i])
 		if err != nil {
 			return fmt.Errorf("send payment failed: %v", err)
 		}
@@ -252,7 +269,8 @@ func (r *SMRouter) sendPayment(dest RouteID, amount float64) error {
 			requestID: requestID,
 			value:     splittedAmounts[i],
 			root:      root,
-			dest:      r.RouterBase[dest].AddrWithRoots[root].addr,
+			dest:      r.RouterBase[dest].AddrWithRoots[root].Addr,
+			upperHop:  r.ID,
 		}
 
 		newProbe := &probeInfo{
@@ -268,6 +286,7 @@ func (r *SMRouter) sendPayment(dest RouteID, amount float64) error {
 			r.probeBase[requestID] = make(map[RouteID]*probeInfo)
 			r.probeBase[requestID][root] = newProbe
 		}
+		r.updateLinkValue(r.ID, nextHop, splittedAmounts[i], SUB)
 		r.sendMsg(nextHop, payreq)
 	}
 
@@ -276,6 +295,7 @@ out:
 	for {
 		select {
 		case res := <-r.payRequestPool[requestID]:
+			//SMLogger.Printf("payres :%v", spew.Sdump(res))
 			if res.success == false {
 				return fmt.Errorf("probe failed")
 			}
@@ -293,7 +313,18 @@ out:
 	因此在真正支付的过程中只需要将接受方的那一部分金额加上就可以了。
 	*/
 	for _, probe := range r.probeBase[requestID] {
+
+		//TODO(xuehan): add monitor link change
+
 		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
+
+
+
+		payment := &Payment{
+			requestID: requestID,
+			root: probe.root,
+		}
+		r.sendMsg(probe.nextHop,payment)
 	}
 	return nil
 }
@@ -310,21 +341,21 @@ func (r *SMRouter) getNeighbourToSend(root RouteID, dest string,
 	for n := range r.Neighbours {
 		tmpAddr := r.RouterBase[n].AddrWithRoots[root]
 		tmpDist :=  getDis(
-			tmpAddr.addr,
-			dest, 4)
+			tmpAddr.Addr,
+			dest, ADDR_LENGTH_INTERVAL)
 		linkValue := 0.0
 		if r.ID < n {
-			link, ok := r.LinkBase[getLinkKey(r.ID, n)]
+			link, ok := r.LinkBase[GetLinkKey(r.ID, n)]
 			if ok {
-				linkValue = link.val1
+				linkValue = link.Val1
 			}
 		} else {
-			link, ok := r.LinkBase[getLinkKey(n, r.ID)]
+			link, ok := r.LinkBase[GetLinkKey(n, r.ID)]
 			if ok {
-				linkValue = link.val2
+				linkValue = link.Val2
 			}
 		}
-		if tmpDist < minDis && amount < linkValue {
+		if tmpDist < minDis && amount <= linkValue {
 			minDis = tmpDist
 			minNeighbour = n
 		}
@@ -341,31 +372,31 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 
 	//var oldValue, newValue float64
 	if from > to {
-		linkKey := getLinkKey(to, from)
+		linkKey := GetLinkKey(to, from)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
-			//oldValue = link.val2
+			//oldValue = link.Val2
 			if flag == ADD {
-				link.val2 += value
+				link.Val2 += value
 			} else {
-				if link.val2 >= value {
-					link.val2 -= value
+				if link.Val2 >= value {
+					link.Val2 -= value
 				} else {
 					//TODO(xuehan). log
 					fmt.Printf("The fund: %v in the link: %v --> %v "+
-						"is less the num: %v to sub", link.val2, from, to, value)
+						"is less the num: %v to sub", link.Val2, from, to, value)
 					return
 				}
 			}
-			//newValue = link.val2
+			//newValue = link.Val2
 		} else { // 如果link本身不存在，那么只能加不能减
 			//oldValue = 0
 			if flag == ADD {
 				r.LinkBase[linkKey] = &Link{
-					part1: to,
-					part2: from,
-					val1:  0,
-					val2:  value,
+					Part1: to,
+					Part2: from,
+					Val1:  0,
+					Val2:  value,
 				}
 				// 更新邻居信息
 				if from == r.ID {
@@ -378,38 +409,38 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 			} else {
 				//TODO(xuehan). log
 				fmt.Printf("The fund: %v in the link: %v --> %v "+
-					"is less the num: %v to sub", link.val2, from, to, value)
+					"is less the num: %v to sub", link.Val2, from, to, value)
 				return
 			}
 			//newValue = value
 		}
 
 	} else {
-		linkKey := getLinkKey(from, to)
+		linkKey := GetLinkKey(from, to)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
-			//oldValue = link.val1
+			//oldValue = link.Val1
 			if flag == ADD {
-				link.val1 += value
+				link.Val1 += value
 			} else {
-				if link.val1 >= value {
-					link.val1 -= value
+				if link.Val1 >= value {
+					link.Val1 -= value
 				} else {
 					//TODO(xuehan). log
 					fmt.Printf("The fund: %v in the link: %v --> %v "+
-						"is less the num: %v to sub", link.val2, from, to, value)
+						"is less the num: %v to sub", link.Val2, from, to, value)
 					return
 				}
 			}
-			//oldValue = link.val1
+			//oldValue = link.Val1
 		} else { // 如果link本身不存在，那么只能加不能减
 			//oldValue = 0
 			if flag == ADD {
 				r.LinkBase[linkKey] = &Link{
-					part1: from,
-					part2: to,
-					val1:  value,
-					val2:  0,
+					Part1: from,
+					Part2: to,
+					Val1:  value,
+					Val2:  0,
 				}
 
 				// 更新邻居信息
@@ -423,7 +454,7 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 			} else {
 				//TODO(xuehan). log
 				fmt.Printf("The fund: %v in the link: %v --> %v "+
-					"is less the num: %v to sub", link.val1, from, to, value)
+					"is less the num: %v to sub", link.Val1, from, to, value)
 				return
 			}
 			//newValue = value
@@ -454,24 +485,24 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 				reset[aliveRoot] = struct{}{}
 				continue
 			}
-			val1, err := r.getLinkValue(neighbour, LINK_DIR_RIGHT)
+			Val1, err := r.getLinkValue(neighbour, LINK_DIR_RIGHT)
 			if err != nil {
 				return err
 			}
-			val2, err := r.getLinkValue(neighbour, LINK_DIR_LEFT)
+			Val2, err := r.getLinkValue(neighbour, LINK_DIR_LEFT)
 			if err != nil {
 				return err
 			}
 			// 这里的条件实际上放宽了，除了判断其和父母的link value以外还应该判断邻居的
 			// 和父母的link value是否是双向大于0的。
-			if val1 > 0 && val2 > 0 {
+			if Val1 > 0 && Val2 > 0 {
 				valToParent, err := r.getLinkValue(
-					r.AddrWithRoots[aliveRoot].parent, LINK_DIR_RIGHT)
+					r.AddrWithRoots[aliveRoot].Parent, LINK_DIR_RIGHT)
 				if err != nil {
 					return err
 				}
 				valFromParent, err := r.getLinkValue(
-					r.AddrWithRoots[aliveRoot].parent, LINK_DIR_LEFT)
+					r.AddrWithRoots[aliveRoot].Parent, LINK_DIR_LEFT)
 				if err != nil {
 					return nil
 				}
@@ -484,7 +515,7 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 		}
 
 		if oldValue > 0 && newValue == 0 {
-			if addr, ok := r.AddrWithRoots[aliveRoot]; ok && addr.parent == neighbour {
+			if addr, ok := r.AddrWithRoots[aliveRoot]; ok && addr.Parent == neighbour {
 				reset[aliveRoot] = struct{}{}
 			}
 		}
@@ -492,12 +523,12 @@ func (r *SMRouter) monitorLinkChange(oldValue, newValue float64, neighbour Route
 	// 判断和邻居的链接是否都还大于0，如果两个都等于0，那么就从邻居集合中删掉
 	var linkKey string
 	if r.ID < neighbour {
-		linkKey = getLinkKey(r.ID, neighbour)
+		linkKey = GetLinkKey(r.ID, neighbour)
 	} else {
-		linkKey = getLinkKey(neighbour, r.ID)
+		linkKey = GetLinkKey(neighbour, r.ID)
 	}
-	if r.LinkBase[linkKey].val1 == 0 &&
-		r.LinkBase[linkKey].val2 == 0 {
+	if r.LinkBase[linkKey].Val1 == 0 &&
+		r.LinkBase[linkKey].Val2 == 0 {
 		delete(r.Neighbours, neighbour)
 		delete(r.RouterBase[neighbour].Neighbours, r.ID)
 	}
@@ -515,27 +546,27 @@ func (r *SMRouter) getLinkValue(neighbour RouteID, direction bool) (float64, err
 		return 0, fmt.Errorf("cann't get link value to self")
 	}
 	if r.ID < neighbour {
-		linkKey := getLinkKey(r.ID, neighbour)
+		linkKey := GetLinkKey(r.ID, neighbour)
 		link, ok := r.LinkBase[linkKey]
 		if !ok {
 			return 0, nil
 		} else {
 			if direction == LINK_DIR_RIGHT {
-				return link.val1, nil
+				return link.Val1, nil
 			} else {
-				return link.val2, nil
+				return link.Val2, nil
 			}
 		}
 	} else {
-		linkKey := getLinkKey(neighbour, r.ID)
+		linkKey := GetLinkKey(neighbour, r.ID)
 		link, ok := r.LinkBase[linkKey]
 		if !ok {
 			return 0, nil
 		} else {
 			if direction == LINK_DIR_RIGHT {
-				return link.val2, nil
+				return link.Val2, nil
 			} else {
-				return link.val1, nil
+				return link.Val1, nil
 			}
 		}
 	}
@@ -579,35 +610,35 @@ out:
 			resNum++
 			resSrc := res.resSrc
 			neiAddrBytes := []byte(res.addr)
-			selfAddrBytes := []byte(r.AddrWithRoots[resetAddrRoot].addr)
+			selfAddrBytes := []byte(r.AddrWithRoots[resetAddrRoot].Addr)
 			// 判断是否是孩子节点发来的，如果是，则忽略，并且添加到children中，以通知其
 			if bytes.Equal(selfAddrBytes,
-				neiAddrBytes[0:len(neiAddrBytes)-4]) {
+				neiAddrBytes[0:len(neiAddrBytes)-ADDR_LENGTH_INTERVAL]) {
 				children = append(children, res.resSrc)
 				if resNum == len(r.Neighbours) {
 					break out
 				}
 				continue
 			}
-			val1, err := r.getLinkValue(resSrc,LINK_DIR_RIGHT)
+			Val1, err := r.getLinkValue(resSrc,LINK_DIR_RIGHT)
 			if err != nil {
 				//TODO(xuehan): log
 				fmt.Printf("faced error:%v", err)
 			}
-			val2, err := r.getLinkValue(resSrc,LINK_DIR_LEFT)
+			Val2, err := r.getLinkValue(resSrc,LINK_DIR_LEFT)
 			if err != nil {
 				//TODO(xuehan): log
 				fmt.Printf("faced error:%v", err)
 			}
-			if val2 > 0 && val1 > 0 {
+			if Val2 > 0 && Val1 > 0 {
 				biLinkResponses = append(biLinkResponses, res)
-			} else if (val2 > 0 && val1 ==0) || (val1 > 0 && val2 ==0) {
+			} else if (Val2 > 0 && Val1 ==0) || (Val1 > 0 && Val2 ==0) {
 				uniLinkResponses = append(uniLinkResponses, res)
 			}
 			if resNum == len(r.Neighbours) {
 				break out
 			}
-		case time.After(2 * time.Second):
+		case <- time.After(2 * time.Second):
 			break out
 		}
 	}
@@ -615,16 +646,16 @@ out:
 	if len(biLinkResponses) != 0 {
 		idx := rand.Intn(len(biLinkResponses))
 		selectRes := biLinkResponses[idx]
-		r.AddrWithRoots[resetAddrRoot] = &addrType{
-			parent: selectRes.resSrc,
-			addr: selectRes.addr + GetRandomString(4),
+		r.AddrWithRoots[resetAddrRoot] = &AddrType{
+			Parent: selectRes.resSrc,
+			Addr: selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
 		}
 	} else if len(uniLinkResponses) != 0 {
 		idx := rand.Intn(len(uniLinkResponses))
 		selectRes := biLinkResponses[idx]
-		r.AddrWithRoots[resetAddrRoot] = &addrType{
-			parent: selectRes.resSrc,
-			addr: selectRes.addr + GetRandomString(4),
+		r.AddrWithRoots[resetAddrRoot] = &AddrType{
+			Parent: selectRes.resSrc,
+			Addr: selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
 		}
 	}
 	// 通知邻居重置地址
@@ -642,7 +673,7 @@ func (r *SMRouter) onResetAddrReq(req *addrReq) {
 		resSrc:  r.ID,
 		resRoot: req.reqRoot,
 		reqID:   req.reqID,
-		addr:    r.AddrWithRoots[req.reqRoot].addr,
+		addr:    r.AddrWithRoots[req.reqRoot].Addr,
 	}
 	r.sendMsg(req.reqSrc, res)
 }
@@ -652,7 +683,7 @@ func (r *SMRouter) onResetAddrRes(res *addrRes) {
 }
 
 func (r *SMRouter) onNotifyReset(noti *addrResetNoti)  {
-	if r.AddrWithRoots[noti.root].parent == noti.src {
+	if r.AddrWithRoots[noti.root].Parent == noti.src {
 		r.resetAddr(noti.root)
 	}
 }
@@ -663,11 +694,11 @@ func NewSMRouter(id RouteID, roots []RouteID,
 
 	router := &SMRouter{
 		ID:              id,
-		AddrWithRoots:   make(map[RouteID]*addrType),
+		AddrWithRoots:   make(map[RouteID]*AddrType),
 		Roots:           roots,
 		Neighbours:      make(map[RouteID]struct{}),
 		RouterBase:      routerBase,
-		payRequestPool:  make(map[RequestID]chan *payRes, PAYMENT_POOL_CAPCITY),
+		payRequestPool:  make(map[RequestID]chan *payRes),
 		addrRequestPool: make(map[RequestID]chan *addrRes, ADDR_POOL_CAPCITY),
 		probeBase:       make(map[RequestID]map[RouteID]*probeInfo),
 		LinkBase:        linkBase,
@@ -680,20 +711,20 @@ func NewSMRouter(id RouteID, roots []RouteID,
 
 func (r *SMRouter) AddLink (n RouteID, toN, fromN float64) {
 	if n < r.ID {
-		linkKey := getLinkKey(n, r.ID)
+		linkKey := GetLinkKey(n, r.ID)
 		r.LinkBase[linkKey] = &Link{
-			part1: n,
-			part2: r.ID,
-			val1: fromN,
-			val2: toN,
+			Part1: n,
+			Part2: r.ID,
+			Val1: fromN,
+			Val2: toN,
 		}
 	} else {
-		linkKey := getLinkKey(r.ID, n)
+		linkKey := GetLinkKey(r.ID, n)
 		r.LinkBase[linkKey] = &Link{
-			part1: r.ID,
-			part2: n,
-			val1: toN,
-			val2: fromN,
+			Part1: r.ID,
+			Part2: n,
+			Val1: toN,
+			Val2: fromN,
 		}
 	}
 	r.Neighbours[n] = struct{}{}
@@ -702,10 +733,10 @@ func (r *SMRouter) AddLink (n RouteID, toN, fromN float64) {
 
 func (r *SMRouter)RemoveLink (n RouteID)  {
 	if n > r.ID {
-		linkKey := getLinkKey(r.ID, n)
+		linkKey := GetLinkKey(r.ID, n)
 		delete(r.LinkBase, linkKey)
 	} else {
-		linkKey := getLinkKey(n, r.ID)
+		linkKey := GetLinkKey(n, r.ID)
 		delete(r.LinkBase, linkKey)
 	}
 	delete(r.Neighbours, n)
@@ -715,7 +746,7 @@ func (r *SMRouter)RemoveLink (n RouteID)  {
 func (r *SMRouter)GetLink (n RouteID) *Link {
 	var linkKey string
 	if n < r.ID {
-		linkKey = getLinkKey(n, r.ID)
+		linkKey = GetLinkKey(n, r.ID)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
 			return link
@@ -723,7 +754,7 @@ func (r *SMRouter)GetLink (n RouteID) *Link {
 			return nil
 		}
 	} else {
-		linkKey = getLinkKey(r.ID, n)
+		linkKey = GetLinkKey(r.ID, n)
 		link, ok := r.LinkBase[linkKey]
 		if ok {
 			return link
@@ -733,3 +764,4 @@ func (r *SMRouter)GetLink (n RouteID) *Link {
 	}
 	return nil
 }
+

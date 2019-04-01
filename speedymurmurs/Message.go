@@ -26,7 +26,7 @@ type payRes struct {
 /**
 进行支付时,传递此消息
 */
-type payment struct {
+type Payment struct {
 	requestID RequestID
 	root      RouteID
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 	"sort"
+	"fmt"
 )
 
 
@@ -16,13 +17,13 @@ func selectRouters() []RouteID {
 }
 
 // 生成link的key，要求r1 < r2
-func getLinkKey(r1, r2 RouteID) string {
+func GetLinkKey(r1, r2 RouteID) string {
 	return strconv.Itoa(int(r1)) + "-" + strconv.Itoa(int(r2))
 }
 
 // 通过父节点生成孩子节点的地址
 func DeriveAddrr(parentAddr string) string {
-	return parentAddr + GetRandomString(4)
+	return parentAddr + GetRandomString(ADDR_LENGTH_INTERVAL)
 }
 
 // 生成一定长度的随机字符串
@@ -70,5 +71,9 @@ func randomPartition (amount float64, num int) []float64 {
 		res[i] = amount * (rate[i] - rate[i-1])
 	}
 	return res
+}
+
+func (r *SMRouter) Printf(string string, a ...interface{}) {
+	fmt.Printf("R"+strconv.Itoa(int(r.ID))+":"+string, a...)
 }
 
