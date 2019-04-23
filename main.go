@@ -6,7 +6,7 @@ import (
 
 func main()  {
 
-	testCase := 5
+	testCase := 2
 
 	switch testCase {
 	case 1:

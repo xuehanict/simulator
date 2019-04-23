@@ -2,9 +2,9 @@ package main
 
 import (
 	"container/list"
-	sw "github.com/lightningnetwork/sm/silentWhisper"
+	sw "github.com/lightningnetwork/simulator/silentWhisper"
 	"time"
-	sm "github.com/lightningnetwork/sm/speedymurmurs"
+	sm "github.com/lightningnetwork/simulator/speedymurmurs"
 )
 
 func createTree(routers map[sw.RouteID]*sw.SWRouter, links map[string]*sw.Link, roots []sw.RouteID) {

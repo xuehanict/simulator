@@ -11,8 +11,8 @@ import (
 	"io"
 	"strings"
 	"strconv"
-	sw "github.com/lightningnetwork/sm/silentWhisper"
-	sm "github.com/lightningnetwork/sm/speedymurmurs"
+	sw "github.com/lightningnetwork/simulator/silentWhisper"
+	sm "github.com/lightningnetwork/simulator/speedymurmurs"
 	"log"
 )
 
@@ -218,7 +218,7 @@ func testSWBigData() {
 		links[sw.GetLinkKey(link.Part1,link.Part2)] = link
 	}
 
-	roots := []sw.RouteID{43788, 5399, 100,500, 53800}
+	roots := []sw.RouteID{3,5}
 	nodes := make(map[sw.RouteID]*sw.SWRouter, 0)
 	for i:=0; i<67149; i++ {
 		router := sw.NewSwRouter(sw.RouteID(i),roots, nodes, links)

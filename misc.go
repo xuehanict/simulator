@@ -1,7 +1,7 @@
 package main
 
 import (
-	sw "github.com/lightningnetwork/sm/silentWhisper"
+	sw "github.com/lightningnetwork/simulator/silentWhisper"
 	"os"
 	"fmt"
 	"bufio"
