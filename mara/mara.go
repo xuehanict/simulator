@@ -77,3 +77,25 @@ func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*Node) *DAG {
 	}
 	return dag
 }
+
+func computeT (dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struct{} {
+
+	U := dag.vertexs
+	T := make(map[utils.RouterID]struct{})
+
+	for id, node := range U {
+		if _, ok := S[id]; ok {
+			continue
+		}
+		for _, child := range node.Children {
+			if _, ok := S[child.ID]; ok {
+				T[id] = struct{}{}
+			}
+		}
+	}
+
+	return T
+}
+
+
+
