@@ -43,8 +43,38 @@ func MaraMC(nodes map[utils.RouterID]*Node, start *Node) *DAG {
 	return getDAG(ordering,nodes)
 }
 
-func MaraSPE(nodes map[utils.RouterID]*Node, start *Node)  {
+func MaraSPE(nodes map[utils.RouterID]*Node, start *Node, spf *DAG) *DAG {
+	S := make(map[utils.RouterID]struct{})
 
+	startID := start.ID
+	S[startID] = struct{}{}
+
+	ordering := make([]utils.RouterID, 1)
+	ordering[0] = startID
+
+	for {
+		if len(ordering) == len(nodes) {
+			break
+		}
+		v := utils.RouterID(-1)
+		T := computeT(spf,S)
+		largestD := 0
+		for vtx := range T {
+			tmpConn := 0
+			for _, n := range nodes[vtx].Neighbours {
+				if _, ok := S[n.ID]; ok {
+					tmpConn++
+				}
+			}
+			if tmpConn > largestD {
+				largestD = tmpConn
+				v = vtx
+			}
+		}
+		ordering = append(ordering, v)
+		S[v] = struct{}{}
+	}
+	return getDAG(ordering,nodes)
 }
 
 func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*Node) *DAG {
@@ -87,13 +117,12 @@ func computeT (dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struc
 		if _, ok := S[id]; ok {
 			continue
 		}
-		for _, child := range node.Children {
-			if _, ok := S[child.ID]; ok {
+		for _, parent := range node.Parents {
+			if _, ok := S[parent.ID]; ok {
 				T[id] = struct{}{}
 			}
 		}
 	}
-
 	return T
 }
 
