@@ -20,6 +20,10 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 	// 针对start节点初始化
 	distance[start] = 0
 	flag[start]  = true
+	for n := range nodes[start].Neighbours {
+		distance[n] = 1
+		mNodes[n].Parents = append(mNodes[n].Parents, start)
+	}
 
 	for i:=1; i < len(mNodes); i++ {
 		min := INF
@@ -40,10 +44,14 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 				tmp = INF
 			}
 
-			if !flag[node] && tmp < distance[node] {
-				distance[node] = tmp
-				mNodes[node].Parents = append(mNodes[node].Parents, mNodes[k])
-				mNodes[k].Children = append(mNodes[k].Children, mNodes[node])
+			if !flag[node] {
+				if tmp < distance[node] {
+					distance[node] = tmp
+					mNodes[node].Parents = nil
+					mNodes[node].Parents = append(mNodes[node].Parents, k)
+				} else if tmp == distance[node]{
+					mNodes[node].Parents = append(mNodes[node].Parents,k)
+				}
 			}
 		}
 	}
@@ -53,13 +61,3 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 		vertexs: mNodes,
 	}
 }
-
-
-
-
-
-
-
-
-
-
