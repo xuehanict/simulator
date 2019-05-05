@@ -1,8 +1,23 @@
 package mara
 
-import "github.com/lightningnetwork/simulator/utils"
+import (
+	"github.com/lightningnetwork/simulator/utils"
+)
 
 const INF = 0x3f3f3f3f
+
+type disElement struct {
+	distance float64
+	id 	utils.RouterID
+}
+
+func (d *disElement) Tag () interface{} {
+	return d.id
+}
+
+func (d *disElement) Key () float64 {
+	return d.distance
+}
 
 func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 
@@ -36,20 +51,14 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 		}
 
 		flag[k] = true
-		for node := range mNodes {
-			tmp := 0
-			if mNodes[k].checkLink(node) {
-				tmp = min + 1
-			} else {
-				tmp = INF
-			}
-
+		for node := range nodes[k].Neighbours {
+			tmp := min + 1
 			if !flag[node] {
 				if tmp < distance[node] {
 					distance[node] = tmp
 					mNodes[node].Parents = nil
 					mNodes[node].Parents = append(mNodes[node].Parents, k)
-				} else if tmp == distance[node]{
+				} else if tmp != INF && tmp == distance[node]{
 					mNodes[node].Parents = append(mNodes[node].Parents,k)
 				}
 			}

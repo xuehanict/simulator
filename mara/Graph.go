@@ -48,12 +48,11 @@ func NewDAG(root *Node) *DAG {
 
 func (n *Node)checkLink(id utils.RouterID) bool {
 	//fmt.Printf("node id is %v", spew.Sdump(n))
-	for nei := range n.Neighbours {
-		if nei == id {
-			return true
-		}
+	if _, ok := n.Neighbours[id]; ok {
+		return true
+	} else  {
+		return false
 	}
-	return false
 }
 
 func copyNodes(src map[utils.RouterID]*Node) map[utils.RouterID]*Node {
