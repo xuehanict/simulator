@@ -1,7 +1,9 @@
 package mara
 
 import (
+	"fmt"
 	"github.com/lightningnetwork/simulator/utils"
+	fibHeap "github.com/starwander/GoFibonacciHeap"
 )
 
 const INF = 0x3f3f3f3f
@@ -25,9 +27,15 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 
 	// 初始化距离和已求出最短距离的集合flag,distance表示start节点到其他节点的距离，
 	// flag表示已经求出这个节点的最短距离
-	distance := make(map[utils.RouterID]int)
+	// 最后空间换时间，distance数组用来直接索引距离，heap用来直接取最小值
+	distance := make(map[utils.RouterID]float64)
+	heap := fibHeap.NewFibHeap()
 	flag := make(map[utils.RouterID]bool)
 	for id := range mNodes {
+		err := heap.InsertValue(&disElement{INF, id})
+		if err != nil {
+			fmt.Printf("insert value faced err :%v", err)
+		}
 		distance[id] = INF
 		flag[id] = false
 	}
@@ -37,25 +45,26 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 	flag[start]  = true
 	for n := range nodes[start].Neighbours {
 		distance[n] = 1
+		err := heap.DecreaseKey(n, 1)
+		if err != nil{
+			fmt.Printf("decrease value faced err :%v", err)
+		}
 		mNodes[n].Parents = append(mNodes[n].Parents, start)
 	}
 
 	for i:=1; i < len(mNodes); i++ {
-		min := INF
-		k := utils.RouterID(0)
-		for node := range mNodes{
-			if !flag[node] && distance[node] < min {
-				min = distance[node]
-				k = node
-			}
-		}
-
+		tmpK, min := heap.ExtractMin()
+		k := tmpK.(utils.RouterID)
 		flag[k] = true
 		for node := range nodes[k].Neighbours {
 			tmp := min + 1
 			if !flag[node] {
 				if tmp < distance[node] {
 					distance[node] = tmp
+					err := heap.DecreaseKey(node, tmp)
+					if err != nil {
+						fmt.Printf("decrease value faced err :%v", err)
+					}
 					mNodes[node].Parents = nil
 					mNodes[node].Parents = append(mNodes[node].Parents, k)
 				} else if tmp != INF && tmp == distance[node]{

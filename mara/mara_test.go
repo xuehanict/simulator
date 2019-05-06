@@ -56,6 +56,21 @@ func TestNewDAG(t *testing.T)  {
 	t.Log("done")
 }
 
+func TestNewDAGOPT(t *testing.T)  {
+	graph, err := parseTestJson(tenNodesGraphComplex)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	m := &Mara{
+		Graph: graph,
+	}
+	startID := utils.RouterID(3)
+	m.DAGs[startID] = m.MaraMcOPT(startID)
+
+	//spew.Dump(m.DAGs[startID])
+	t.Log("done")
+}
+
 func TestGetRoutes(t *testing.T)  {
 	graph, err := parseTestJson(tenNodesGraphComplex)
 	if err != nil {
@@ -82,10 +97,10 @@ func TestPayment(t *testing.T)  {
 		Graph: graph,
 	}
 
-	src := utils.RouterID(4)
-	dest := utils.RouterID(9)
+	src := utils.RouterID(3)
+	dest := utils.RouterID(8)
 
-	paths := m.getRoutes(src,dest,  10)
+	paths := m.getRoutes(src,dest,  150)
 	spew.Dump(paths)
 
 	result := m.sendPayment(src,dest,150)
