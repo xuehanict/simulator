@@ -97,13 +97,13 @@
     {
       "node_1": 3,
       "node_2": 10,
-      "capacity1": 0,
+      "capacity1": 90,
       "capacity2": 100
     },
     {
       "node_1": 5,
       "node_2": 8,
-      "capacity1": 100,
+      "capacity1": 15,
       "capacity2": 0
     }
   ]

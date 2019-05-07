@@ -55,6 +55,24 @@ func (n *Node)checkLink(id utils.RouterID) bool {
 	}
 }
 
+func (n *Node)checkParent(id utils.RouterID) bool {
+	for _, p := range n.Parents {
+		if p == id {
+			return true
+		}
+	}
+	return  false
+}
+
+func (n *Node)checkChild(id utils.RouterID) bool {
+	for _, c := range n.Children {
+		if c == id {
+			return true
+		}
+	}
+	return  false
+}
+
 func copyNodes(src map[utils.RouterID]*Node) map[utils.RouterID]*Node {
 	res := make(map[utils.RouterID]*Node)
 	for id, node := range src {

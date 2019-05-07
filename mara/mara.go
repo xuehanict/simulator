@@ -2,7 +2,6 @@ package mara
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	fibHeap "github.com/starwander/GoFibonacciHeap"
@@ -78,15 +77,6 @@ func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 
 func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
-	S := make(map[utils.RouterID]struct{})
-	T := make(map[utils.RouterID]struct{})
-
-	for _, node := range nodes {
-		T[node.ID] = struct{}{}
-	}
-	delete(T, startID)
-
-	S[startID] = struct{}{}
 
 	ordering := make([]utils.RouterID, 1)
 	ordering[0] = startID
@@ -116,7 +106,6 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 		}
 		max, _ := capcity.ExtractMin()
 		maxID := max.(utils.RouterID)
-		S[maxID] = struct{}{}
 		ordering = append(ordering, maxID)
 
 		for id := range m.Nodes[maxID].Neighbours {
@@ -174,6 +163,75 @@ func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
 	return getDAG(ordering, nodes)
 }
 
+func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
+	nodes := m.Nodes
+	if _, ok := m.SPTs[startID]; !ok {
+		fmt.Printf("算最短路\n")
+		m.SPTs[startID] = dijkstra(m.Nodes, startID)
+		fmt.Printf("算完最短路\n")
+	}
+	spt := m.SPTs[startID]
+	ordering := make([]utils.RouterID, 1)
+	ordering[0] = startID
+
+	T := fibHeap.NewFibHeap()
+	S := make(map[utils.RouterID]struct{})
+	S[startID] = struct {}{}
+	capcity := make(map[utils.RouterID]float64)
+
+	// 对所有节点的capcity初始化为0
+	for i := range nodes {
+		capcity[i] = MAX_ADJACENT
+	}
+
+	// 对start的邻居初始化
+	for i := range nodes[startID].Neighbours {
+		capcity[i] = MAX_ADJACENT - 1
+		if spt.vertexs[i].checkParent(startID) {
+			err := T.Insert(i, capcity[i])
+			if err != nil {
+				fmt.Printf("insert value to T faced error :%v", err)
+			}
+		}
+	}
+
+	// 循环，每次展开一个
+	for {
+		if len(ordering) == len(nodes) {
+			break
+		}
+		tag, _ := T.ExtractMin()
+		id := tag.(utils.RouterID)
+		S[id] = struct{}{}
+		for i := range nodes[id].Neighbours {
+			if _, ok := S[i]; ok {
+				continue
+			}
+			capcity[i] = capcity[i] - 1
+			if spt.vertexs[i].checkParent(id) {
+				if tmp := T.GetTag(i); tmp != math.Inf(-1) {
+					err := T.DecreaseKey(i, capcity[i])
+					if err != nil {
+						fmt.Printf("decrease failed%v", err)
+					}
+				} else {
+					err := T.Insert(i, capcity[i])
+					if err != nil {
+						fmt.Printf("insert value to T faced error :%v", err)
+					}
+				}
+			}
+		}
+		ordering = append(ordering,id)
+	}
+
+	//spew.Dump(ordering)
+	return getDAG(ordering, nodes)
+}
+
+
+
+
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutes(src, dest utils.RouterID,
 	amount utils.Amount) [][]utils.RouterID {
@@ -181,6 +239,7 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 	if _, ok := m.DAGs[dest]; !ok {
 		//m.DAGs[dest] = m.MaraSPE(dest)
 		m.DAGs[dest] = m.MaraMcOPT(dest)
+		//m.DAGs[dest] = m.MaraSpeOpt(dest)
 	}
 	fmt.Printf("DAG构架能完成\n")
 	return m.nextHop(nil, src, dest, amount)
@@ -192,17 +251,21 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	// arrived in the end. we return the final path.
 	if current == dest {
 		finalPath := append(curPath, current)
+		//fmt.Printf("path 为%v\n", finalPath)
 		return [][]utils.RouterID{finalPath}
 	} else {
-		// we continue to pass the request until the destinat ion.
+		// we continue to pass the request until the destination.
 		paths := make([][]utils.RouterID, 0)
 		newCurPath := append(curPath, current)
 		for _, pnode := range m.DAGs[dest].vertexs[current].Parents {
 			if utils.GetLinkValue(current, pnode, m.Channels) <
-				amount*PROBE_AMOUNT_RATE {
+				0.001 || len(curPath) > 15{
+
+				//fmt.Printf("过滤parent\n")
 				continue
 			}
-			//			fmt.Printf("path 长度%v\n", len(curPath))
+			//fmt.Printf("path 为%v\n", curPath)
+
 			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount)
 			if len(tmpPaths) != 0 {
 				paths = append(paths, tmpPaths...)
@@ -243,7 +306,6 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 		routeMins[j] = min
 	}
 
-//	spew.Dump(routeMins)
 	newRoutes := make([][]utils.RouterID,0)
 	newRouteMins := make([]utils.Amount,0)
 	for i, min := range  routeMins {
@@ -251,10 +313,11 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 			newRoutes = append(newRoutes, routes[i])
 			newRouteMins = append(newRouteMins, min)
 		} else {
-			fmt.Printf("min 为0")
+			//fmt.Printf("min 为0")
 		}
 	}
 
+	fmt.Printf("用到的路径数量为%v\n",len(newRouteMins))
 	// 然后再算出每个通道的索引，以便在线性规划列约束矩阵时使用
 	cursor := 0
 	for channelKey,val := range channelVals {
@@ -338,8 +401,8 @@ func (m *Mara) linearProgram(
 	}
 	a[0] = 0
 	lp.SetMatRow(len(channelIndexs)+1, ind, a)
-	spew.Dump(a)
-	spew.Dump(len(channelIndexs) + 1)
+	//	spew.Dump(a)
+//	spew.Dump(len(channelIndexs) + 1)
 
 	err := lp.Simplex(nil)
 	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())

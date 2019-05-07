@@ -74,6 +74,13 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 		}
 	}
 
+	// 不光要让能找到父节点，还要能找到孩子节点
+	for id, n := range mNodes {
+		for _, p := range n.Parents {
+			mNodes[p].Children = append(mNodes[p].Children, id)
+		}
+	}
+
 	return &DAG{
 		Root: mNodes[start],
 		vertexs: mNodes,

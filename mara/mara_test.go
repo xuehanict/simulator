@@ -56,7 +56,7 @@ func TestNewDAG(t *testing.T)  {
 	t.Log("done")
 }
 
-func TestNewDAGOPT(t *testing.T)  {
+func TestNewDAGMcOPT(t *testing.T)  {
 	graph, err := parseTestJson(tenNodesGraphComplex)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -70,6 +70,22 @@ func TestNewDAGOPT(t *testing.T)  {
 	//spew.Dump(m.DAGs[startID])
 	t.Log("done")
 }
+
+func TestNewDAGSpeOPT(t *testing.T)  {
+	graph, err := parseTestJson(tenNodesGraphComplex)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	m := &Mara{
+		Graph: graph,
+	}
+	startID := utils.RouterID(3)
+	m.DAGs[startID] = m.MaraSpeOpt(startID)
+
+	//spew.Dump(m.DAGs[startID])
+	t.Log("done")
+}
+
 
 func TestGetRoutes(t *testing.T)  {
 	graph, err := parseTestJson(tenNodesGraphComplex)
@@ -102,7 +118,26 @@ func TestPayment(t *testing.T)  {
 
 	paths := m.getRoutes(src,dest,  150)
 	spew.Dump(paths)
+	spew.Dump(m.SPTs[dest])
+	result := m.sendPayment(src,dest,150)
+	spew.Dump(result)
+}
 
+func TestGetRoutesSpec(t *testing.T)  {
+	graph, err := parseTestJson(tenNodesGraphHalf)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	m := &Mara{
+		Graph: graph,
+	}
+
+	src := utils.RouterID(3)
+	dest := utils.RouterID(8)
+
+	paths := m.getRoutes(src,dest,  150)
+	spew.Dump(paths)
+	//spew.Dump(m.SPTs[dest])
 	result := m.sendPayment(src,dest,150)
 	spew.Dump(result)
 }
