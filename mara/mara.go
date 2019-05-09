@@ -16,7 +16,7 @@ type Mara struct {
 }
 
 const (
-	PROBE_AMOUNT_RATE = 0.1
+	PROBE_AMOUNT_RATE = 0.01
 	MAX_ADJACENT      = 100000
 )
 
@@ -57,7 +57,7 @@ func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 		largestD := 0
 		for vtx := range T {
 			tmpConn := 0
-			for n := range nodes[vtx].Neighbours {
+			for _, n := range nodes[vtx].Neighbours {
 				if _, ok := S[n]; ok {
 					tmpConn++
 				}
@@ -122,6 +122,8 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	return getDAG(ordering, nodes)
 }
 
+
+/*
 func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
 	if _, ok := m.SPTs[startID]; !ok {
@@ -162,6 +164,7 @@ func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
 	//	spew.Dump(ordering)
 	return getDAG(ordering, nodes)
 }
+*/
 
 func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
@@ -181,11 +184,11 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 
 	// 对所有节点的capcity初始化为0
 	for i := range nodes {
-		capcity[i] = MAX_ADJACENT
+		capcity[utils.RouterID(i)] = MAX_ADJACENT
 	}
 
 	// 对start的邻居初始化
-	for i := range nodes[startID].Neighbours {
+	for _, i := range nodes[startID].Neighbours {
 		capcity[i] = MAX_ADJACENT - 1
 		if spt.vertexs[i].checkParent(startID) {
 			err := T.Insert(i, capcity[i])
@@ -203,7 +206,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 		tag, _ := T.ExtractMin()
 		id := tag.(utils.RouterID)
 		S[id] = struct{}{}
-		for i := range nodes[id].Neighbours {
+		for _, i := range nodes[id].Neighbours {
 			if _, ok := S[i]; ok {
 				continue
 			}
@@ -225,12 +228,9 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 		ordering = append(ordering,id)
 	}
 
-	//spew.Dump(ordering)
+//	spew.Dump(ordering)
 	return getDAG(ordering, nodes)
 }
-
-
-
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutes(src, dest utils.RouterID,
@@ -238,8 +238,8 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 
 	if _, ok := m.DAGs[dest]; !ok {
 		//m.DAGs[dest] = m.MaraSPE(dest)
-		m.DAGs[dest] = m.MaraMcOPT(dest)
-		//m.DAGs[dest] = m.MaraSpeOpt(dest)
+		//m.DAGs[dest] = m.MaraMcOPT(dest)
+		m.DAGs[dest] = m.MaraSpeOpt(dest)
 	}
 	fmt.Printf("DAG构架能完成\n")
 	return m.nextHop(nil, src, dest, amount)
@@ -251,21 +251,21 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	// arrived in the end. we return the final path.
 	if current == dest {
 		finalPath := append(curPath, current)
-		//fmt.Printf("path 为%v\n", finalPath)
 		return [][]utils.RouterID{finalPath}
 	} else {
 		// we continue to pass the request until the destination.
 		paths := make([][]utils.RouterID, 0)
-		newCurPath := append(curPath, current)
-		for _, pnode := range m.DAGs[dest].vertexs[current].Parents {
-			if utils.GetLinkValue(current, pnode, m.Channels) <
-				0.001 || len(curPath) > 15{
+		newCurPath := make([]utils.RouterID,len(curPath) + 1)
+		copy(newCurPath, curPath)
+		newCurPath[len(newCurPath)-1] = current
 
-				//fmt.Printf("过滤parent\n")
+		for _, pnode := range m.DAGs[dest].vertexs[current].Parents {
+
+			val := utils.GetLinkValue(current,pnode, m.Channels)
+			if val < amount * PROBE_AMOUNT_RATE || len(curPath) >= 6{
 				continue
 			}
 			//fmt.Printf("path 为%v\n", curPath)
-
 			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount)
 			if len(tmpPaths) != 0 {
 				paths = append(paths, tmpPaths...)
@@ -306,18 +306,6 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 		routeMins[j] = min
 	}
 
-	newRoutes := make([][]utils.RouterID,0)
-	newRouteMins := make([]utils.Amount,0)
-	for i, min := range  routeMins {
-		if min != 0 {
-			newRoutes = append(newRoutes, routes[i])
-			newRouteMins = append(newRouteMins, min)
-		} else {
-			//fmt.Printf("min 为0")
-		}
-	}
-
-	fmt.Printf("用到的路径数量为%v\n",len(newRouteMins))
 	// 然后再算出每个通道的索引，以便在线性规划列约束矩阵时使用
 	cursor := 0
 	for channelKey,val := range channelVals {
@@ -329,7 +317,7 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 	if len(routes) == 0 {
 		return nil,fmt.Errorf("未找到路径")
 	}
-	return m.linearProgram(newRoutes, channelIndexs, newRouteMins, channelVals, amount)
+	return m.linearProgram(routes, channelIndexs, routeMins, channelVals, amount)
 }
 
 func (m *Mara) linearProgram(
@@ -391,8 +379,7 @@ func (m *Mara) linearProgram(
 		for _, path := range paths {
 			a[path+1] = 1.0
 		}
-//		spew.Dump(a)
-//		spew.Dump(channelIndexs[row] + 1)
+
 		lp.SetMatRow(channelIndexs[row]+1, ind, a)
 	}
 	a := make([]float64, len(routes)+1)
@@ -401,14 +388,11 @@ func (m *Mara) linearProgram(
 	}
 	a[0] = 0
 	lp.SetMatRow(len(channelIndexs)+1, ind, a)
-	//	spew.Dump(a)
-//	spew.Dump(len(channelIndexs) + 1)
 
 	err := lp.Simplex(nil)
-	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())
+//	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())
 	result := make([]utils.Amount, 0)
 	for i := 0; i < len(routes); i++ {
-		fmt.Printf("; %s = %g", lp.ColName(i+1), lp.ColPrim(i+1))
 		result = append(result, utils.Amount(lp.ColPrim(i+1)))
 	}
 	fmt.Println()
@@ -417,7 +401,7 @@ func (m *Mara) linearProgram(
 	return result, err
 }
 
-func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*Node) *DAG {
+func getDAG(ordering []utils.RouterID, nodes []*Node) *DAG {
 
 	mapOrdering := make(map[utils.RouterID]int, len(ordering))
 	for index, id := range ordering {
@@ -425,26 +409,24 @@ func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*Node) *DAG {
 	}
 
 	//tmpLinks := make([]*Link,0)
-	dag := NewDAG(nodes[ordering[0]])
-	//dag.edges = tmpLinks
+	dag := NewDAG(nodes[ordering[0]], len(nodes))
 	tmpNodes := copyNodes(nodes)
 	dag.vertexs = tmpNodes
 
 	for i := 0; i < len(ordering); i++ {
-		for n := range nodes[ordering[i]].Neighbours {
+		for _, n := range nodes[ordering[i]].Neighbours {
 			if mapOrdering[n] > i {
 
 				tmpNodes[ordering[i]].Children = append(tmpNodes[ordering[i]].Children,
 					n)
 				tmpNodes[n].Parents = append(tmpNodes[n].Parents,
 					ordering[i])
-				//tmpLinks = append(tmpLinks, link)
 			}
 		}
 	}
 	return dag
 }
-
+/*
 func computeT(dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struct{} {
 
 	U := dag.vertexs
@@ -462,3 +444,4 @@ func computeT(dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struct
 	}
 	return T
 }
+*/

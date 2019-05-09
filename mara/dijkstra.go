@@ -21,7 +21,7 @@ func (d *disElement) Key () float64 {
 	return d.distance
 }
 
-func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
+func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
 
 	mNodes := copyNodes(nodes)
 
@@ -32,18 +32,18 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 	heap := fibHeap.NewFibHeap()
 	flag := make(map[utils.RouterID]bool)
 	for id := range mNodes {
-		err := heap.InsertValue(&disElement{INF, id})
+		err := heap.InsertValue(&disElement{INF, utils.RouterID(id)})
 		if err != nil {
 			fmt.Printf("insert value faced err :%v", err)
 		}
-		distance[id] = INF
-		flag[id] = false
+		distance[utils.RouterID(id)] = INF
+		flag[utils.RouterID(id)] = false
 	}
 
 	// 针对start节点初始化
 	distance[start] = 0
 	flag[start]  = true
-	for n := range nodes[start].Neighbours {
+	for _, n := range nodes[start].Neighbours {
 		distance[n] = 1
 		err := heap.DecreaseKey(n, 1)
 		if err != nil{
@@ -56,7 +56,7 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 		tmpK, min := heap.ExtractMin()
 		k := tmpK.(utils.RouterID)
 		flag[k] = true
-		for node := range nodes[k].Neighbours {
+		for _, node := range nodes[k].Neighbours {
 			tmp := min + 1
 			if !flag[node] {
 				if tmp < distance[node] {
@@ -77,7 +77,7 @@ func dijkstra(nodes map[utils.RouterID]*Node, start utils.RouterID) *DAG {
 	// 不光要让能找到父节点，还要能找到孩子节点
 	for id, n := range mNodes {
 		for _, p := range n.Parents {
-			mNodes[p].Children = append(mNodes[p].Children, id)
+			mNodes[p].Children = append(mNodes[p].Children, utils.RouterID(id))
 		}
 	}
 

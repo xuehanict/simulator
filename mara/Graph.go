@@ -19,17 +19,17 @@ type Node struct {
 	ID         utils.RouterID
 	Parents    []utils.RouterID
 	Children   []utils.RouterID
-	Neighbours map[utils.RouterID]struct{}
+	Neighbours []utils.RouterID
 }
 
 type DAG struct {
 	Root    *Node
-	vertexs map[utils.RouterID]*Node
+	vertexs []*Node
 	//edges   []*Link
 }
 
 type Graph struct {
-	Nodes map[utils.RouterID]*Node
+	Nodes []*Node
 	// 图的channels信息
 	Channels map[string]*utils.Link
 	// 路由所需要的DAG，路由时是一步步往parents的方向传递路由包和支付请求
@@ -38,21 +38,22 @@ type Graph struct {
 	SPTs map[utils.RouterID]*DAG
 }
 
-func NewDAG(root *Node) *DAG {
+func NewDAG(root *Node, len int) *DAG {
 	return &DAG{
 		Root:    root,
-		vertexs: make(map[utils.RouterID]*Node),
+		vertexs: make([]*Node, len),
 		//edges:   make([]*Link, 0),
 	}
 }
 
 func (n *Node)checkLink(id utils.RouterID) bool {
 	//fmt.Printf("node id is %v", spew.Sdump(n))
-	if _, ok := n.Neighbours[id]; ok {
-		return true
-	} else  {
-		return false
+	for _, n := range n.Neighbours {
+		if n == id {
+			return true
+		}
 	}
+	return  false
 }
 
 func (n *Node)checkParent(id utils.RouterID) bool {
@@ -73,11 +74,11 @@ func (n *Node)checkChild(id utils.RouterID) bool {
 	return  false
 }
 
-func copyNodes(src map[utils.RouterID]*Node) map[utils.RouterID]*Node {
-	res := make(map[utils.RouterID]*Node)
+func copyNodes(src []*Node) []*Node {
+	res := make([]*Node, len(src))
 	for id, node := range src {
 		n := &Node{
-			ID:id,
+			ID:utils.RouterID(id),
 			Neighbours: node.Neighbours,
 			Children: node.Children,
 			Parents: node.Parents,

@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
+	fibHeap "github.com/starwander/GoFibonacciHeap"
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -50,7 +52,7 @@ func TestNewDAG(t *testing.T)  {
 		Graph: graph,
 	}
 	startID := utils.RouterID(3)
-	m.DAGs[startID] = m.MaraSPE(startID)
+	m.DAGs[startID] = m.MaraSpeOpt(startID)
 
 	spew.Dump(m.DAGs[startID])
 	t.Log("done")
@@ -96,7 +98,7 @@ func TestGetRoutes(t *testing.T)  {
 		Graph: graph,
 	}
 	startID := utils.RouterID(3)
-	m.DAGs[startID] = m.MaraSPE(startID)
+	m.DAGs[startID] = m.MaraSpeOpt(startID)
 
 	paths := m.getRoutes(9,3,  10)
 	spew.Dump(paths)
@@ -113,12 +115,12 @@ func TestPayment(t *testing.T)  {
 		Graph: graph,
 	}
 
-	src := utils.RouterID(3)
+	src := utils.RouterID(2)
 	dest := utils.RouterID(8)
 
 	paths := m.getRoutes(src,dest,  150)
 	spew.Dump(paths)
-	spew.Dump(m.SPTs[dest])
+//	spew.Dump(m.SPTs[dest])
 	result := m.sendPayment(src,dest,150)
 	spew.Dump(result)
 }
@@ -132,8 +134,8 @@ func TestGetRoutesSpec(t *testing.T)  {
 		Graph: graph,
 	}
 
-	src := utils.RouterID(3)
-	dest := utils.RouterID(8)
+	src := utils.RouterID(2)
+	dest := utils.RouterID(7)
 
 	paths := m.getRoutes(src,dest,  150)
 	spew.Dump(paths)
@@ -183,22 +185,34 @@ func TestRipple(t *testing.T)  {
 		links[utils.GetLinkKey(link.Part1,link.Part2)] = link
 	}
 
-	nodes := make(map[utils.RouterID]*Node, 0)
+	nodes := make([]*Node, 67149)
 	for i:=0; i<67149; i++ {
 		router := &Node{
 			ID: utils.RouterID(i),
 			Parents: make([]utils.RouterID,0),
 			Children:make([]utils.RouterID,0),
-			Neighbours:make(map[utils.RouterID]struct{},0),
+			Neighbours:make([]utils.RouterID,0),
 		}
 		nodes[utils.RouterID(i)] = router
 	}
 
-	for _, edge := range links {
-		nodes[edge.Part1].Neighbours[edge.Part2] = struct{}{}
-		nodes[edge.Part2].Neighbours[edge.Part1] = struct{}{}
+	keySlice := make([]string,0)
+	for k  := range links {
+		keySlice = append(keySlice,k)
+	}
+	sort.Strings(keySlice)
+	for _, key := range keySlice {
+		edge := links[key]
+		nodes[edge.Part1].Neighbours = append(nodes[edge.Part1].Neighbours, edge.Part2)
+		nodes[edge.Part2].Neighbours = append(nodes[edge.Part2].Neighbours, edge.Part1)
 	}
 
+//	sort.Ints([]int{nodes[0].Neighbours...})
+/*
+	for _, node := range nodes {
+		fmt.Printf("node%v neighbours is %v\n",node.ID, node.Neighbours)
+	}
+*/
 	m := &Mara{
 		Graph: &Graph{
 			Nodes: nodes,
@@ -208,17 +222,16 @@ func TestRipple(t *testing.T)  {
 		},
 	}
 
-
 	fmt.Printf("节点link数据解析完成\n")
-
 	trans := generateTrans("../data/finalSets/static/sampleTr-1.txt")
+	fmt.Printf("交易数据解析完成\n")
+
 	total := 0
 	success := 0
 
-	fmt.Printf("交易数据解析完成\n")
-
 	for _, tran := range trans{
 		total ++
+
 		err := m.sendPayment(utils.RouterID(tran.src),
 			utils.RouterID(tran.dest), utils.Amount(tran.val))
 		if err == nil {
@@ -228,20 +241,16 @@ func TestRipple(t *testing.T)  {
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
 		fmt.Printf("success:%v\n", success)
+
 		if total == 50000 {
 			break
 		}
 	}
 	fmt.Printf("total :%v\n", total)
-
 	time.Sleep(3 * time.Second)
 }
 
-
 func parseTestJson(filePath string) (*Graph, error){
-
-	nodes := make(map[utils.RouterID]*Node)
-	edges := make(map[string]*utils.Link)
 
 	var g testGraph
 	graphJson, err := ioutil.ReadFile(filePath)
@@ -252,11 +261,13 @@ func parseTestJson(filePath string) (*Graph, error){
 		fmt.Printf("%v", err)
 		os.Exit(1)
 	}
+	nodes := make([]*Node, len(g.Nodes))
+	edges := make(map[string]*utils.Link)
 
 	for _, n := range g.Nodes {
 		nodes[n.Id] = &Node{
 			ID: n.Id,
-			Neighbours: make(map[utils.RouterID]struct{}),
+			Neighbours: make([]utils.RouterID, 0),
 		}
 	}
 	for _, edge := range g.Edges {
@@ -268,8 +279,8 @@ func parseTestJson(filePath string) (*Graph, error){
 		}
 		linkKey := utils.GetLinkKey(edge.Node1,edge.Node2)
 		edges[linkKey] = link
-		nodes[link.Part1].Neighbours[link.Part2] = struct{}{}
-		nodes[link.Part2].Neighbours[link.Part1] = struct{}{}
+		nodes[link.Part1].Neighbours = append(nodes[link.Part1].Neighbours, link.Part2)
+		nodes[link.Part2].Neighbours = append(nodes[link.Part2].Neighbours, link.Part1)
 	}
 
 	graph := &Graph{
@@ -320,4 +331,28 @@ func generateTrans (filePath string) []tran {
 
 	return trans
 }
+
+func TestFibHeap (T *testing.T) {
+
+	heap := fibHeap.NewFibHeap()
+	for i := 1; i < 100; i++ {
+		if i%10 == 0 {
+			err := heap.Insert(i, -1)
+			if err != nil {
+				fmt.Printf("faced error : %v",err)
+			}
+		} else {
+			err := heap.Insert(i, float64(i))
+			if err != nil {
+				fmt.Printf("faced error : %v",err)
+			}
+		}
+	}
+
+	tag, _ := heap.ExtractMin()
+	fmt.Printf("tag: %v", tag)
+
+}
+
+
 
