@@ -1,6 +1,7 @@
 package mara
 
 import (
+	"fmt"
 	"github.com/lightningnetwork/simulator/utils"
 )
 
@@ -46,45 +47,70 @@ func NewDAG(root *Node, len int) *DAG {
 	}
 }
 
-func (n *Node)checkLink(id utils.RouterID) bool {
+func (n *Node) checkLink(id utils.RouterID) bool {
 	//fmt.Printf("node id is %v", spew.Sdump(n))
 	for _, n := range n.Neighbours {
 		if n == id {
 			return true
 		}
 	}
-	return  false
+	return false
 }
 
-func (n *Node)checkParent(id utils.RouterID) bool {
+func (n *Node) checkParent(id utils.RouterID) bool {
 	for _, p := range n.Parents {
 		if p == id {
 			return true
 		}
 	}
-	return  false
+	return false
 }
 
-func (n *Node)checkChild(id utils.RouterID) bool {
+func (n *Node) checkChild(id utils.RouterID) bool {
 	for _, c := range n.Children {
 		if c == id {
 			return true
 		}
 	}
-	return  false
+	return false
 }
 
 func copyNodes(src []*Node) []*Node {
 	res := make([]*Node, len(src))
 	for id, node := range src {
 		n := &Node{
-			ID:utils.RouterID(id),
+			ID:         utils.RouterID(id),
 			Neighbours: node.Neighbours,
-			Children: node.Children,
-			Parents: node.Parents,
+			Children:   node.Children,
+			Parents:    node.Parents,
 		}
 		res[id] = n
 	}
 	return res
 }
 
+func (g *Graph) updateWeights(routes [][]utils.RouterID,
+	amts []utils.Amount) error {
+
+	if len(routes) != len(amts) {
+		return fmt.Errorf("routes number is not equal to amts' ")
+	}
+
+	for idx, route := range routes {
+		for i := 0; i < len(route)-1; i++ {
+			// i 到 i+1 的钱减少
+			err := utils.UpdateLinkValue(route[i], route[i+1],
+				g.Channels, amts[idx], false)
+			if err != nil {
+				return err
+			}
+			// i+1 到 i 的钱增加
+			err = utils.UpdateLinkValue(route[i+1], route[i],
+				g.Channels, amts[idx], true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

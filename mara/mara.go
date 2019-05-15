@@ -2,10 +2,10 @@ package mara
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	fibHeap "github.com/starwander/GoFibonacciHeap"
-
 	//	"github.com/davecgh/go-spew/spew"
 	"math"
 )
@@ -16,12 +16,13 @@ type Mara struct {
 }
 
 const (
-	PROBE_AMOUNT_RATE = 0.01
-	MAX_ADJACENT      = 100000
+	PROBE_AMOUNT_RATE  = 0.01
+	DEFAULT_PATH_LENTH = 6
+	MAX_ADJACENT       = 100000
 )
 
 type capElement struct {
-	id utils.RouterID
+	id      utils.RouterID
 	capcity float64
 }
 
@@ -32,7 +33,6 @@ func (c *capElement) Tag() interface{} {
 func (c *capElement) Key() float64 {
 	return c.capcity
 }
-
 
 func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
@@ -75,6 +75,7 @@ func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 	return getDAG(ordering, nodes)
 }
 
+// 优化过的MaraMC算法，时间复杂度降低了很多
 func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
 
@@ -84,12 +85,15 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	capcity := fibHeap.NewFibHeap()
 	for id, node := range m.Nodes {
 		if node.checkLink(startID) {
-			err := capcity.Insert(id, MAX_ADJACENT-1)
+			err := capcity.Insert(utils.RouterID(id), MAX_ADJACENT-1)
 			if err != nil {
 				fmt.Printf("insert to heap error")
 			}
 		} else {
-			err := capcity.Insert(id, MAX_ADJACENT)
+			if id == 3 {
+				fmt.Printf("insert 3 into heap")
+			}
+			err := capcity.Insert(utils.RouterID(id), MAX_ADJACENT)
 			if err != nil {
 				fmt.Printf("insert to heap error")
 			}
@@ -97,7 +101,7 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	}
 	err := capcity.Delete(startID)
 	if err != nil {
-		fmt.Printf(" delete heap error:%v", err)
+		fmt.Printf(" delete heap error:%v\n", err)
 	}
 
 	for {
@@ -118,10 +122,9 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 		}
 	}
 
-//	spew.Dump(ordering)
+	//	spew.Dump(ordering)
 	return getDAG(ordering, nodes)
 }
-
 
 /*
 func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
@@ -166,6 +169,7 @@ func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
 }
 */
 
+// 优化过的MaraSPE，时间复杂度降低了很多
 func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
 	if _, ok := m.SPTs[startID]; !ok {
@@ -179,7 +183,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 
 	T := fibHeap.NewFibHeap()
 	S := make(map[utils.RouterID]struct{})
-	S[startID] = struct {}{}
+	S[startID] = struct{}{}
 	capcity := make(map[utils.RouterID]float64)
 
 	// 对所有节点的capcity初始化为0
@@ -225,10 +229,10 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 				}
 			}
 		}
-		ordering = append(ordering,id)
+		ordering = append(ordering, id)
 	}
 
-//	spew.Dump(ordering)
+	//	spew.Dump(ordering)
 	return getDAG(ordering, nodes)
 }
 
@@ -242,11 +246,26 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 		m.DAGs[dest] = m.MaraSpeOpt(dest)
 	}
 	fmt.Printf("DAG构架能完成\n")
-	return m.nextHop(nil, src, dest, amount)
+	return m.nextHop(nil, src, dest, amount,
+		DEFAULT_PATH_LENTH, PROBE_AMOUNT_RATE)
 }
 
+// 获取供交易的路径，沿父节点的方向向上至dest节点
+func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
+	amount utils.Amount, maxLenth int, amtRate float64) [][]utils.RouterID {
+
+	if _, ok := m.DAGs[dest]; !ok {
+		//m.DAGs[dest] = m.MaraSPE(dest)
+		m.DAGs[dest] = m.MaraMcOPT(dest)
+		//m.DAGs[dest] = m.MaraSpeOpt(dest)
+	}
+	fmt.Printf("DAG构架能完成\n")
+	return m.nextHop(nil, src, dest, amount,
+		maxLenth, amtRate)
+}
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
-	dest utils.RouterID, amount utils.Amount) [][]utils.RouterID {
+	dest utils.RouterID, amount utils.Amount,
+	maxLength int, amtRate float64) [][]utils.RouterID {
 
 	// arrived in the end. we return the final path.
 	if current == dest {
@@ -255,18 +274,20 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	} else {
 		// we continue to pass the request until the destination.
 		paths := make([][]utils.RouterID, 0)
-		newCurPath := make([]utils.RouterID,len(curPath) + 1)
+		newCurPath := make([]utils.RouterID, len(curPath)+1)
 		copy(newCurPath, curPath)
 		newCurPath[len(newCurPath)-1] = current
 
 		for _, pnode := range m.DAGs[dest].vertexs[current].Parents {
 
-			val := utils.GetLinkValue(current,pnode, m.Channels)
-			if val < amount * PROBE_AMOUNT_RATE || len(curPath) >= 6{
+			val := utils.GetLinkValue(current, pnode, m.Channels)
+			if val < amount*utils.Amount(amtRate) ||
+				len(curPath) >= maxLength {
 				continue
 			}
-			//fmt.Printf("path 为%v\n", curPath)
-			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount)
+
+			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount,
+				maxLength, amtRate)
 			if len(tmpPaths) != 0 {
 				paths = append(paths, tmpPaths...)
 			}
@@ -275,14 +296,55 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	}
 }
 
-func (m *Mara) sendPayment(src, dest utils.RouterID,
+func (m *Mara) SendPayment(src, dest utils.RouterID,
 	amount utils.Amount) error {
-	fmt.Printf("从%v发到%v， %v tocken\n", src, dest, amount)
+	
+	if amount == 0 {
+		return nil
+	}	
 	routes := m.getRoutes(src, dest, amount)
-	fmt.Printf("路径数目为：%v\n", len(routes))
-
-	_, err := m.allocMoney(routes, amount)
+	result, err := m.allocMoney(routes, amount)
+	if err != nil {
+		return err
+	}
+	err = m.updateWeights(routes, result)
+	spew.Dump(m.Channels)
 	return err
+}
+
+func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID,
+	amount utils.Amount, maxLenth int, amtRate float64) (int, int, error) {
+		
+	if amount == 0 {
+		return 0, 0, nil
+	}	
+	routes := m.getRoutesWithBond(src, dest, amount, maxLenth, amtRate)
+	result, err := m.allocMoney(routes, amount)
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(result) != len(routes) {
+		return 0, 0, fmt.Errorf("allocation result don't match routes")
+	}
+
+	selectedRoutes := make([][]utils.RouterID, 0)
+	selectedResult := make([]utils.Amount, 0)
+	total := 0.0
+
+	for i := 0; i < len(result); i++ {
+		if result[i] != 0 {
+			total += float64(result[i])
+			selectedRoutes = append(selectedRoutes, routes[i])
+			selectedResult = append(selectedResult, result[i])
+		}
+	}
+
+	if math.Abs(total-float64(amount)) > 0.0000000001 {
+		return 0, 0, fmt.Errorf("allocation failed")
+	}
+
+	err = m.updateWeights(selectedRoutes, selectedResult)
+	return len(routes), len(selectedRoutes), err
 }
 
 func (m *Mara) allocMoney(routes [][]utils.RouterID,
@@ -308,14 +370,14 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 
 	// 然后再算出每个通道的索引，以便在线性规划列约束矩阵时使用
 	cursor := 0
-	for channelKey,val := range channelVals {
+	for channelKey, val := range channelVals {
 		if val > 0 {
 			channelIndexs[channelKey] = cursor
 			cursor++
 		}
 	}
 	if len(routes) == 0 {
-		return nil,fmt.Errorf("未找到路径")
+		return nil, fmt.Errorf("未找到路径")
 	}
 	return m.linearProgram(routes, channelIndexs, routeMins, channelVals, amount)
 }
@@ -326,7 +388,6 @@ func (m *Mara) linearProgram(
 	routeMins []utils.Amount,
 	channelVals map[string]utils.Amount,
 	amount utils.Amount) ([]utils.Amount, error) {
-
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -390,13 +451,14 @@ func (m *Mara) linearProgram(
 	lp.SetMatRow(len(channelIndexs)+1, ind, a)
 
 	err := lp.Simplex(nil)
-//	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())
+	//	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())
 	result := make([]utils.Amount, 0)
 	for i := 0; i < len(routes); i++ {
 		result = append(result, utils.Amount(lp.ColPrim(i+1)))
+		//		fmt.Printf("; %s = %g", lp.ColName(i+1), lp.ColPrim(i+1))
 	}
 	fmt.Println()
-//	lp.Delete()
+	//	lp.Delete()
 
 	return result, err
 }
@@ -426,6 +488,7 @@ func getDAG(ordering []utils.RouterID, nodes []*Node) *DAG {
 	}
 	return dag
 }
+
 /*
 func computeT(dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struct{} {
 

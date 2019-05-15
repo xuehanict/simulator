@@ -2,14 +2,12 @@ package speedymurmurs
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
+	"sort"
 	"strconv"
 	"time"
-	"sort"
-	"fmt"
 )
-
-
 
 func selectRouters() []RouteID {
 
@@ -38,7 +36,6 @@ func GetRandomString(l int) string {
 	return string(result)
 }
 
-
 // 用到的计算距离的方式
 func getDis(neighbour, dest string, lenthInterval int) int {
 	depthN := len(neighbour) / lenthInterval
@@ -50,17 +47,17 @@ func getDis(neighbour, dest string, lenthInterval int) int {
 	for ; cpl < depthD && cpl < depthN &&
 		bytes.Equal(neiBytes[0:lenthInterval],
 			destBytes[0:lenthInterval]); cpl++ {
-			neiBytes = neiBytes[lenthInterval:]
-			destBytes = destBytes[lenthInterval:]
+		neiBytes = neiBytes[lenthInterval:]
+		destBytes = destBytes[lenthInterval:]
 	}
 	return depthN + depthD - (2 * cpl)
 }
 
-func randomPartition (amount float64, num int) []float64 {
-	res := make([]float64,num)
+func randomPartition(amount float64, num int) []float64 {
+	res := make([]float64, num)
 	rate := make([]float64, num)
 
-	for i:= 0; i < num - 1; i++ {
+	for i := 0; i < num-1; i++ {
 		rate[i] = rand.Float64()
 	}
 	rate[num-1] = 1
@@ -76,4 +73,3 @@ func randomPartition (amount float64, num int) []float64 {
 func (r *SMRouter) Printf(string string, a ...interface{}) {
 	fmt.Printf("R"+strconv.Itoa(int(r.ID))+":"+string, a...)
 }
-

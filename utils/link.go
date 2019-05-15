@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"strconv"
 	"fmt"
+	"strconv"
 )
 
 /*
@@ -82,4 +82,18 @@ func UpdateLinkValue(from, to RouterID, linkBase map[string]*Link,
 		}
 	}
 	return nil
+}
+
+func CopyChannels(src map[string]*Link) map[string]*Link {
+	res := make(map[string]*Link)
+	for key, val := range src {
+		res[key] = &Link{
+			Part1: val.Part1,
+			Part2: val.Part2,
+			Val1:  val.Val1,
+			Val2:  val.Val2,
+		}
+	}
+
+	return res
 }

@@ -1,26 +1,26 @@
 package main
 
 import (
-	"time"
-	"fmt"
-	"sync"
-	"io/ioutil"
-	"os"
-	"encoding/json"
 	"bufio"
-	"io"
-	"strings"
-	"strconv"
+	"encoding/json"
+	"fmt"
 	sw "github.com/lightningnetwork/simulator/silentWhisper"
 	sm "github.com/lightningnetwork/simulator/speedymurmurs"
+	"io"
+	"io/ioutil"
 	"log"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
-func testSW()  {
+func testSW() {
 	var (
-		nodes= make(map[sw.RouteID]*sw.SWRouter, 0)
-		edges= make(map[string]*sw.Link, 0)
-		wg = sync.WaitGroup{}
+		nodes = make(map[sw.RouteID]*sw.SWRouter, 0)
+		edges = make(map[string]*sw.Link, 0)
+		wg    = sync.WaitGroup{}
 	)
 	file := "./" + time.Now().Format("20180102123422") + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
@@ -29,7 +29,6 @@ func testSW()  {
 	}
 	sw.SWLogger = log.New(logFile, "SWRN ", log.Ldate|log.Ltime|log.Lshortfile)
 	defer logFile.Close()
-
 
 	graphJson, err := ioutil.ReadFile(tenNodesGraph)
 	if err != nil {
@@ -43,9 +42,9 @@ func testSW()  {
 		os.Exit(1)
 	}
 
-	roots := []sw.RouteID{3,8,9}
-	for _, node := range g.Nodes{
-		router := sw.NewSwRouter(node.Id,roots, nodes, edges)
+	roots := []sw.RouteID{3, 8, 9}
+	for _, node := range g.Nodes {
+		router := sw.NewSwRouter(node.Id, roots, nodes, edges)
 		nodes[node.Id] = router
 	}
 
@@ -53,17 +52,17 @@ func testSW()  {
 		link := &sw.Link{
 			Part1: edge.Node1,
 			Part2: edge.Node2,
-			Val1: edge.Capacity1,
-			Val2: edge.Capacity2,
+			Val1:  edge.Capacity1,
+			Val2:  edge.Capacity2,
 		}
-		linkKey := sw.GetLinkKey(edge.Node1,edge.Node2)
+		linkKey := sw.GetLinkKey(edge.Node1, edge.Node2)
 		edges[linkKey] = link
 
 		nodes[edge.Node1].Neighbours[edge.Node2] = struct{}{}
 		nodes[edge.Node2].Neighbours[edge.Node1] = struct{}{}
 	}
 
-	for _,r := range nodes {
+	for _, r := range nodes {
 		wg.Add(1)
 		go r.Start()
 		//fmt.Printf("router %v start\n", r.ID)
@@ -73,31 +72,31 @@ func testSW()  {
 
 	sw.NotifyRooterReset(roots, nodes)
 
-	for i := 0 ;i< 2; i++ {
+	for i := 0; i < 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
 
 	for _, node := range nodes {
-		for key, value := range  node.AddrWithRoots{
-			node.Printf("root %v address is %v\n", key,value)
+		for key, value := range node.AddrWithRoots {
+			node.Printf("root %v address is %v\n", key, value)
 		}
 	}
 
-	fmt.Printf("send result%v\n",nodes[2].SendPayment(1, 100))
+	fmt.Printf("send result%v\n", nodes[2].SendPayment(1, 100))
 
-	for _,node := range nodes{
+	for _, node := range nodes {
 		node.Stop()
 		wg.Done()
 	}
 	wg.Wait()
 }
 
-func testSWTree()  {
+func testSWTree() {
 	var (
-		nodes= make(map[sw.RouteID]*sw.SWRouter, 0)
-		edges= make(map[string]*sw.Link, 0)
-		wg = sync.WaitGroup{}
+		nodes = make(map[sw.RouteID]*sw.SWRouter, 0)
+		edges = make(map[string]*sw.Link, 0)
+		wg    = sync.WaitGroup{}
 	)
 	graphJson, err := ioutil.ReadFile(tenNodesGraphHalf)
 	if err != nil {
@@ -119,8 +118,8 @@ func testSWTree()  {
 	}
 
 	roots := []sw.RouteID{3}
-	for _, node := range g.Nodes{
-		router := sw.NewSwRouter(node.Id,roots, nodes, edges)
+	for _, node := range g.Nodes {
+		router := sw.NewSwRouter(node.Id, roots, nodes, edges)
 		nodes[node.Id] = router
 	}
 
@@ -128,17 +127,17 @@ func testSWTree()  {
 		link := &sw.Link{
 			Part1: edge.Node1,
 			Part2: edge.Node2,
-			Val1: edge.Capacity1,
-			Val2: edge.Capacity2,
+			Val1:  edge.Capacity1,
+			Val2:  edge.Capacity2,
 		}
-		linkKey := sw.GetLinkKey(edge.Node1,edge.Node2)
+		linkKey := sw.GetLinkKey(edge.Node1, edge.Node2)
 		edges[linkKey] = link
 
 		nodes[edge.Node1].Neighbours[edge.Node2] = struct{}{}
 		nodes[edge.Node2].Neighbours[edge.Node1] = struct{}{}
 	}
 
-	for _,r := range nodes {
+	for _, r := range nodes {
 		wg.Add(1)
 		go r.Start()
 		//fmt.Printf("router %v start\n", r.ID)
@@ -149,20 +148,20 @@ func testSWTree()  {
 	//sw.NotifyRooterReset(roots, nodes)
 	createTree(nodes, edges, roots)
 
-	for i := 0 ;i< 2; i++ {
+	for i := 0; i < 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
 
 	for _, node := range nodes {
-		for key, value := range  node.AddrWithRoots{
-			node.Printf("root %v address is %v\n", key,value)
+		for key, value := range node.AddrWithRoots {
+			node.Printf("root %v address is %v\n", key, value)
 		}
 	}
 
-	fmt.Printf("send result%v\n",nodes[2].SendPayment(10, 100))
+	fmt.Printf("send result%v\n", nodes[2].SendPayment(10, 100))
 
-	for _,node := range nodes{
+	for _, node := range nodes {
 		node.Stop()
 		wg.Done()
 	}
@@ -185,10 +184,9 @@ func testSWBigData() {
 	defer f.Close()
 	defer logFile.Close()
 
-
 	br := bufio.NewReader(f)
 	lineNum := 1
-	links := make(map[string]*sw.Link,0)
+	links := make(map[string]*sw.Link, 0)
 	for {
 		line, _, err := br.ReadLine()
 		if err == io.EOF {
@@ -199,29 +197,29 @@ func testSWBigData() {
 		}
 		//
 		if lineNum < 5 {
-			lineNum ++
+			lineNum++
 			continue
 		}
 
 		splitted := strings.Split(string(line), " ")
 		id1, _ := strconv.Atoi(splitted[0])
 		id2, _ := strconv.Atoi(splitted[1])
-		v1, _ := strconv.ParseFloat(splitted[2],64)
-		v2,_ := strconv.ParseFloat(splitted[3], 64)
-		v3,_ := strconv.ParseFloat(splitted[4], 64)
+		v1, _ := strconv.ParseFloat(splitted[2], 64)
+		v2, _ := strconv.ParseFloat(splitted[3], 64)
+		v3, _ := strconv.ParseFloat(splitted[4], 64)
 		link := &sw.Link{
 			Part1: sw.RouteID(id1),
 			Part2: sw.RouteID(id2),
-			Val1: v3 - v2,
-			Val2: v2 - v1,
+			Val1:  v3 - v2,
+			Val2:  v2 - v1,
 		}
-		links[sw.GetLinkKey(link.Part1,link.Part2)] = link
+		links[sw.GetLinkKey(link.Part1, link.Part2)] = link
 	}
 
-	roots := []sw.RouteID{3,5}
+	roots := []sw.RouteID{3, 5}
 	nodes := make(map[sw.RouteID]*sw.SWRouter, 0)
-	for i:=0; i<67149; i++ {
-		router := sw.NewSwRouter(sw.RouteID(i),roots, nodes, links)
+	for i := 0; i < 67149; i++ {
+		router := sw.NewSwRouter(sw.RouteID(i), roots, nodes, links)
 		nodes[sw.RouteID(i)] = router
 	}
 
@@ -231,18 +229,17 @@ func testSWBigData() {
 	}
 
 	wg := sync.WaitGroup{}
-	for _,r := range nodes {
+	for _, r := range nodes {
 		go r.Start()
 		wg.Add(1)
 		fmt.Printf("router %v start\n", r.ID)
 	}
 
 	time.Sleep(3 * time.Second)
-//	sw.NotifyRooterReset(roots, nodes)
+	//	sw.NotifyRooterReset(roots, nodes)
 	createTree(nodes, links, roots)
 
-
-	for i := 0 ;i< 2; i++ {
+	for i := 0; i < 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
@@ -251,8 +248,8 @@ func testSWBigData() {
 	total := 0
 	success := 0
 
-	for _, tran := range trans{
-		total ++
+	for _, tran := range trans {
+		total++
 		err := nodes[sw.RouteID(tran.src)].SendPayment(sw.RouteID(tran.dest), tran.val)
 		if err == nil {
 			success++
@@ -261,10 +258,10 @@ func testSWBigData() {
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
 		fmt.Printf("success:%v\n", success)
-		if total % 1000 == 0 {
+		if total%1000 == 0 {
 			// 重构
 			clearTree(nodes, roots)
-			createTree(nodes,links,roots)
+			createTree(nodes, links, roots)
 		}
 		if total == 50000 {
 			break
@@ -273,18 +270,18 @@ func testSWBigData() {
 
 	fmt.Printf("total :%v\n", total)
 
-	for _,node := range nodes{
+	for _, node := range nodes {
 		node.Stop()
 		wg.Done()
 	}
 	wg.Wait()
 }
 
-func testSMTree()  {
+func testSMTree() {
 	var (
-		nodes= make(map[sm.RouteID]*sm.SMRouter, 0)
-		edges= make(map[string]*sm.Link, 0)
-		wg = sync.WaitGroup{}
+		nodes = make(map[sm.RouteID]*sm.SMRouter, 0)
+		edges = make(map[string]*sm.Link, 0)
+		wg    = sync.WaitGroup{}
 	)
 	graphJson, err := ioutil.ReadFile(tenNodesGraphHalf)
 	if err != nil {
@@ -305,9 +302,9 @@ func testSMTree()  {
 		os.Exit(1)
 	}
 
-	roots := []sm.RouteID{3,5,8}
-	for _, node := range g.Nodes{
-		router := sm.NewSMRouter(sm.RouteID(node.Id),roots, nodes, edges)
+	roots := []sm.RouteID{3, 5, 8}
+	for _, node := range g.Nodes {
+		router := sm.NewSMRouter(sm.RouteID(node.Id), roots, nodes, edges)
 		nodes[sm.RouteID(node.Id)] = router
 	}
 
@@ -315,17 +312,17 @@ func testSMTree()  {
 		link := &sm.Link{
 			Part1: sm.RouteID(edge.Node1),
 			Part2: sm.RouteID(edge.Node2),
-			Val1: edge.Capacity1,
-			Val2: edge.Capacity2,
+			Val1:  edge.Capacity1,
+			Val2:  edge.Capacity2,
 		}
-		linkKey := sw.GetLinkKey(edge.Node1,edge.Node2)
+		linkKey := sw.GetLinkKey(edge.Node1, edge.Node2)
 		edges[linkKey] = link
 
 		nodes[sm.RouteID(edge.Node1)].Neighbours[sm.RouteID(edge.Node2)] = struct{}{}
 		nodes[sm.RouteID(edge.Node2)].Neighbours[sm.RouteID(edge.Node1)] = struct{}{}
 	}
 
-	for _,r := range nodes {
+	for _, r := range nodes {
 		wg.Add(1)
 		go r.Start()
 		//fmt.Printf("router %v start\n", r.ID)
@@ -336,29 +333,29 @@ func testSMTree()  {
 	//sw.NotifyRooterReset(roots, nodes)
 	createTreeSM(nodes, edges, roots)
 
-	for i := 0 ;i< 2; i++ {
+	for i := 0; i < 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
 
 	for _, node := range nodes {
-		for key, value := range  node.AddrWithRoots{
-			node.Printf("root %v address is %v\n", key,value)
+		for key, value := range node.AddrWithRoots {
+			node.Printf("root %v address is %v\n", key, value)
 		}
 	}
 
-	fmt.Printf("send result%v\n",nodes[7].SendPayment(3, 100))
+	fmt.Printf("send result%v\n", nodes[7].SendPayment(3, 100))
 
 	time.Sleep(3 * time.Second)
 
-	for _,node := range nodes{
+	for _, node := range nodes {
 		node.Stop()
 		wg.Done()
 	}
 	wg.Wait()
 }
 
-func testSMBigData()  {
+func testSMBigData() {
 	file := "./" + time.Now().Format("2006-01-02 15:04:05") + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if nil != err {
@@ -374,10 +371,9 @@ func testSMBigData()  {
 	defer f.Close()
 	defer logFile.Close()
 
-
 	br := bufio.NewReader(f)
 	lineNum := 1
-	links := make(map[string]*sm.Link,0)
+	links := make(map[string]*sm.Link, 0)
 	for {
 		line, _, err := br.ReadLine()
 		if err == io.EOF {
@@ -388,28 +384,28 @@ func testSMBigData()  {
 		}
 		//
 		if lineNum < 5 {
-			lineNum ++
+			lineNum++
 			continue
 		}
 
 		splitted := strings.Split(string(line), " ")
 		id1, _ := strconv.Atoi(splitted[0])
 		id2, _ := strconv.Atoi(splitted[1])
-		v1, _ := strconv.ParseFloat(splitted[2],64)
-		v2,_ := strconv.ParseFloat(splitted[3], 64)
-		v3,_ := strconv.ParseFloat(splitted[4], 64)
+		v1, _ := strconv.ParseFloat(splitted[2], 64)
+		v2, _ := strconv.ParseFloat(splitted[3], 64)
+		v3, _ := strconv.ParseFloat(splitted[4], 64)
 		link := &sm.Link{
 			Part1: sm.RouteID(id1),
 			Part2: sm.RouteID(id2),
-			Val1: v3 - v2,
-			Val2: v2 - v1,
+			Val1:  v3 - v2,
+			Val2:  v2 - v1,
 		}
-		links[sm.GetLinkKey(link.Part1,link.Part2)] = link
+		links[sm.GetLinkKey(link.Part1, link.Part2)] = link
 	}
 
 	roots := []sm.RouteID{43788}
 	nodes := make(map[sm.RouteID]*sm.SMRouter, 0)
-	for i:=0; i<67149; i++ {
+	for i := 0; i < 67149; i++ {
 		router := sm.NewSMRouter(sm.RouteID(i), roots, nodes, links)
 		nodes[sm.RouteID(i)] = router
 	}
@@ -421,18 +417,17 @@ func testSMBigData()  {
 
 	fmt.Printf("数据解析完成\n")
 	wg := sync.WaitGroup{}
-	for _,r := range nodes {
+	for _, r := range nodes {
 		go r.Start()
 		wg.Add(1)
 		fmt.Printf("router %v start\n", r.ID)
 	}
 
 	time.Sleep(3 * time.Second)
-//	sw.NotifyRooterReset(roots, nodes)
+	//	sw.NotifyRooterReset(roots, nodes)
 	createTreeSM(nodes, links, roots)
 
-
-	for i := 0 ;i< 2; i++ {
+	for i := 0; i < 2; i++ {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("wait 1s\n")
 	}
@@ -441,8 +436,8 @@ func testSMBigData()  {
 	total := 0
 	success := 0
 
-	for _, tran := range trans{
-		total ++
+	for _, tran := range trans {
+		total++
 		err := nodes[sm.RouteID(tran.src)].SendPayment(sm.RouteID(tran.dest), tran.val)
 		if err == nil {
 			success++
@@ -451,10 +446,10 @@ func testSMBigData()  {
 		fmt.Printf("err :%v\n", err)
 		fmt.Printf("total:%v\n", total)
 		fmt.Printf("success:%v\n", success)
-		if total % 1000 == 0 {
+		if total%1000 == 0 {
 			// 重构
 			clearTreeSM(nodes, roots)
-			createTreeSM(nodes,links,roots)
+			createTreeSM(nodes, links, roots)
 		}
 		if total == 50000 {
 			break
@@ -463,11 +458,9 @@ func testSMBigData()  {
 
 	fmt.Printf("total :%v\n", total)
 
-	for _,node := range nodes{
+	for _, node := range nodes {
 		node.Stop()
 		wg.Done()
 	}
 	wg.Wait()
 }
-
-

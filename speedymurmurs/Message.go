@@ -1,7 +1,5 @@
 package speedymurmurs
 
-
-
 /*************消息的多个类型*************/
 /**
 交易请求信息
@@ -52,12 +50,10 @@ type addrRes struct {
 
 /**
 通知邻居reset地址的消息类型
- */
+*/
 type addrResetNoti struct {
 	root RouteID
-	src RouteID
+	src  RouteID
 }
 
 /*************************************/
-
-

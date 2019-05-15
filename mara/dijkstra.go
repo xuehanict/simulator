@@ -10,14 +10,14 @@ const INF = 0x3f3f3f3f
 
 type disElement struct {
 	distance float64
-	id 	utils.RouterID
+	id       utils.RouterID
 }
 
-func (d *disElement) Tag () interface{} {
+func (d *disElement) Tag() interface{} {
 	return d.id
 }
 
-func (d *disElement) Key () float64 {
+func (d *disElement) Key() float64 {
 	return d.distance
 }
 
@@ -42,17 +42,17 @@ func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
 
 	// 针对start节点初始化
 	distance[start] = 0
-	flag[start]  = true
+	flag[start] = true
 	for _, n := range nodes[start].Neighbours {
 		distance[n] = 1
 		err := heap.DecreaseKey(n, 1)
-		if err != nil{
+		if err != nil {
 			fmt.Printf("decrease value faced err :%v", err)
 		}
 		mNodes[n].Parents = append(mNodes[n].Parents, start)
 	}
 
-	for i:=1; i < len(mNodes); i++ {
+	for i := 1; i < len(mNodes); i++ {
 		tmpK, min := heap.ExtractMin()
 		k := tmpK.(utils.RouterID)
 		flag[k] = true
@@ -67,8 +67,8 @@ func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
 					}
 					mNodes[node].Parents = nil
 					mNodes[node].Parents = append(mNodes[node].Parents, k)
-				} else if tmp != INF && tmp == distance[node]{
-					mNodes[node].Parents = append(mNodes[node].Parents,k)
+				} else if tmp != INF && tmp == distance[node] {
+					mNodes[node].Parents = append(mNodes[node].Parents, k)
 				}
 			}
 		}
@@ -82,7 +82,7 @@ func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
 	}
 
 	return &DAG{
-		Root: mNodes[start],
+		Root:    mNodes[start],
 		vertexs: mNodes,
 	}
 }

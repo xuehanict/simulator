@@ -3,8 +3,8 @@ package main
 import (
 	"container/list"
 	sw "github.com/lightningnetwork/simulator/silentWhisper"
-	"time"
 	sm "github.com/lightningnetwork/simulator/speedymurmurs"
+	"time"
 )
 
 func createTree(routers map[sw.RouteID]*sw.SWRouter, links map[string]*sw.Link, roots []sw.RouteID) {
@@ -113,15 +113,15 @@ func createTreeSM(routers map[sm.RouteID]*sm.SMRouter, links map[string]*sm.Link
 func clearTree(nodes map[sw.RouteID]*sw.SWRouter, roots []sw.RouteID) {
 	for _, root := range roots {
 		for _, node := range nodes {
-			delete(node.AddrWithRoots,root)
+			delete(node.AddrWithRoots, root)
 		}
 	}
 }
 
-func clearTreeSM(nodes map[sm.RouteID]*sm.SMRouter, roots []sm.RouteID)  {
+func clearTreeSM(nodes map[sm.RouteID]*sm.SMRouter, roots []sm.RouteID) {
 	for _, root := range roots {
 		for _, node := range nodes {
-			delete(node.AddrWithRoots,root)
+			delete(node.AddrWithRoots, root)
 		}
 	}
 }

@@ -1,13 +1,13 @@
 package speedymurmurs
 
 import (
-	"fmt"
-	"math"
-	"time"
 	"bytes"
-	"math/rand"
+	"fmt"
 	"log"
-//	"github.com/davecgh/go-spew/spew"
+	"math"
+	"math/rand"
+	"time"
+	//	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -33,8 +33,6 @@ var SMLogger *log.Logger
 
 type RouteID int
 type RequestID string
-
-
 
 type SMRouter struct {
 	ID              RouteID
@@ -77,7 +75,6 @@ type AddrType struct {
 	Addr   string
 	Parent RouteID
 }
-
 
 func (r *SMRouter) Start() {
 	for {
@@ -152,7 +149,7 @@ func (r *SMRouter) onAddrMap(am *addrMap) {
 
 func (r *SMRouter) onPayReq(req *payReq) {
 
-//	SMLogger.Printf("R %v received payreq :%v ",r.ID, spew.Sdump(req))
+	//	SMLogger.Printf("R %v received payreq :%v ",r.ID, spew.Sdump(req))
 
 	SMLogger.Printf("R %v received payreq", r.ID)
 	val := req.value
@@ -188,7 +185,7 @@ func (r *SMRouter) onPayReq(req *payReq) {
 		nextHop, err := r.getNeighbourToSend(root, dest, val)
 		if err != nil {
 			// TODO(xuehan): add log
-			SMLogger.Printf("R %v raise error:%v",r.ID, err)
+			SMLogger.Printf("R %v raise error:%v", r.ID, err)
 			res := &payRes{
 				success:   false,
 				sender:    req.sender,
@@ -221,8 +218,8 @@ func (r *SMRouter) onPayReq(req *payReq) {
 }
 
 func (r *SMRouter) onPayRes(res *payRes) {
-//	SMLogger.Printf("R %v recieved payres %v ",r.ID, spew.Sdump(res))
-	SMLogger.Printf("R %v recieved payres",r.ID)
+	//	SMLogger.Printf("R %v recieved payres %v ",r.ID, spew.Sdump(res))
+	SMLogger.Printf("R %v recieved payres", r.ID)
 	probe := r.probeBase[res.requestID][res.root]
 	if res.sender == r.ID {
 		r.payRequestPool[res.requestID] <- res
@@ -253,7 +250,7 @@ func (r *SMRouter) onPayment(pay *Payment) {
 
 	}
 	if r.AddrWithRoots[probe.root].Addr != probe.destAddr {
-		r.sendMsg(probe.nextHop,pay)
+		r.sendMsg(probe.nextHop, pay)
 	}
 	delete(r.probeBase[pay.requestID], pay.root)
 	if len(r.probeBase[pay.requestID]) == 0 {
@@ -303,7 +300,6 @@ func (r *SMRouter) SendPayment(dest RouteID, amount float64) error {
 
 	SMLogger.Printf("总数%v,分成%v", amount, splittedAmounts)
 
-
 	resArray := make([]*payRes, 0)
 out:
 	for {
@@ -332,13 +328,11 @@ out:
 
 		r.updateLinkValue(probe.nextHop, r.ID, probe.value, ADD)
 
-
-
 		payment := &Payment{
 			requestID: requestID,
-			root: probe.root,
+			root:      probe.root,
 		}
-		r.sendMsg(probe.nextHop,payment)
+		r.sendMsg(probe.nextHop, payment)
 	}
 	return nil
 }
@@ -354,7 +348,7 @@ func (r *SMRouter) getNeighbourToSend(root RouteID, dest string,
 	minNeighbour := RouteID(-1)
 	for n := range r.Neighbours {
 		tmpAddr := r.RouterBase[n].AddrWithRoots[root]
-		tmpDist :=  getDis(
+		tmpDist := getDis(
 			tmpAddr.Addr,
 			dest, ADDR_LENGTH_INTERVAL)
 		linkValue := 0.0
@@ -414,7 +408,7 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 				}
 				// 更新邻居信息
 				if from == r.ID {
-					r.Neighbours[to] = struct {}{}
+					r.Neighbours[to] = struct{}{}
 					r.RouterBase[to].Neighbours[from] = struct{}{}
 				} else {
 					r.Neighbours[from] = struct{}{}
@@ -459,7 +453,7 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 
 				// 更新邻居信息
 				if from == r.ID {
-					r.Neighbours[to] = struct {}{}
+					r.Neighbours[to] = struct{}{}
 					r.RouterBase[to].Neighbours[from] = struct{}{}
 				} else {
 					r.Neighbours[from] = struct{}{}
@@ -475,11 +469,11 @@ func (r *SMRouter) updateLinkValue(from, to RouteID, value float64,
 		}
 	}
 	/*
-	if r.ID == from {
-		r.monitorLinkChange(oldValue, newValue, to)
-	} else {
-		r.monitorLinkChange(oldValue, newValue, from)
-	}
+		if r.ID == from {
+			r.monitorLinkChange(oldValue, newValue, to)
+		} else {
+			r.monitorLinkChange(oldValue, newValue, from)
+		}
 	*/
 }
 
@@ -613,14 +607,14 @@ func (r *SMRouter) resetAddr(resetAddrRoot RouteID) error {
 		})
 	}
 
-	uniLinkResponses := make([]*addrRes,0)
-	biLinkResponses	:= make([]*addrRes,0)
-	children := make([]RouteID,0)
+	uniLinkResponses := make([]*addrRes, 0)
+	biLinkResponses := make([]*addrRes, 0)
+	children := make([]RouteID, 0)
 	resNum := 0
 out:
 	for {
 		select {
-		case res := <- r.addrRequestPool[reqID]:
+		case res := <-r.addrRequestPool[reqID]:
 			resNum++
 			resSrc := res.resSrc
 			neiAddrBytes := []byte(res.addr)
@@ -634,25 +628,25 @@ out:
 				}
 				continue
 			}
-			Val1, err := r.getLinkValue(resSrc,LINK_DIR_RIGHT)
+			Val1, err := r.getLinkValue(resSrc, LINK_DIR_RIGHT)
 			if err != nil {
 				//TODO(xuehan): log
 				fmt.Printf("faced error:%v", err)
 			}
-			Val2, err := r.getLinkValue(resSrc,LINK_DIR_LEFT)
+			Val2, err := r.getLinkValue(resSrc, LINK_DIR_LEFT)
 			if err != nil {
 				//TODO(xuehan): log
 				fmt.Printf("faced error:%v", err)
 			}
 			if Val2 > 0 && Val1 > 0 {
 				biLinkResponses = append(biLinkResponses, res)
-			} else if (Val2 > 0 && Val1 ==0) || (Val1 > 0 && Val2 ==0) {
+			} else if (Val2 > 0 && Val1 == 0) || (Val1 > 0 && Val2 == 0) {
 				uniLinkResponses = append(uniLinkResponses, res)
 			}
 			if resNum == len(r.Neighbours) {
 				break out
 			}
-		case <- time.After(2 * time.Second):
+		case <-time.After(2 * time.Second):
 			break out
 		}
 	}
@@ -662,20 +656,20 @@ out:
 		selectRes := biLinkResponses[idx]
 		r.AddrWithRoots[resetAddrRoot] = &AddrType{
 			Parent: selectRes.resSrc,
-			Addr: selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
+			Addr:   selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
 		}
 	} else if len(uniLinkResponses) != 0 {
 		idx := rand.Intn(len(uniLinkResponses))
 		selectRes := biLinkResponses[idx]
 		r.AddrWithRoots[resetAddrRoot] = &AddrType{
 			Parent: selectRes.resSrc,
-			Addr: selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
+			Addr:   selectRes.addr + GetRandomString(ADDR_LENGTH_INTERVAL),
 		}
 	}
 	// 通知邻居重置地址
 	for _, child := range children {
 		r.sendMsg(child, &addrResetNoti{
-			src: r.ID,
+			src:  r.ID,
 			root: resetAddrRoot,
 		})
 	}
@@ -696,7 +690,7 @@ func (r *SMRouter) onResetAddrRes(res *addrRes) {
 	r.addrRequestPool[res.reqID] <- res
 }
 
-func (r *SMRouter) onNotifyReset(noti *addrResetNoti)  {
+func (r *SMRouter) onNotifyReset(noti *addrResetNoti) {
 	if r.AddrWithRoots[noti.root].Parent == noti.src {
 		r.resetAddr(noti.root)
 	}
@@ -723,29 +717,29 @@ func NewSMRouter(id RouteID, roots []RouteID,
 	return router
 }
 
-func (r *SMRouter) AddLink (n RouteID, toN, fromN float64) {
+func (r *SMRouter) AddLink(n RouteID, toN, fromN float64) {
 	if n < r.ID {
 		linkKey := GetLinkKey(n, r.ID)
 		r.LinkBase[linkKey] = &Link{
 			Part1: n,
 			Part2: r.ID,
-			Val1: fromN,
-			Val2: toN,
+			Val1:  fromN,
+			Val2:  toN,
 		}
 	} else {
 		linkKey := GetLinkKey(r.ID, n)
 		r.LinkBase[linkKey] = &Link{
 			Part1: r.ID,
 			Part2: n,
-			Val1: toN,
-			Val2: fromN,
+			Val1:  toN,
+			Val2:  fromN,
 		}
 	}
 	r.Neighbours[n] = struct{}{}
 	r.RouterBase[n].Neighbours[r.ID] = struct{}{}
 }
 
-func (r *SMRouter)RemoveLink (n RouteID)  {
+func (r *SMRouter) RemoveLink(n RouteID) {
 	if n > r.ID {
 		linkKey := GetLinkKey(r.ID, n)
 		delete(r.LinkBase, linkKey)
@@ -757,7 +751,7 @@ func (r *SMRouter)RemoveLink (n RouteID)  {
 	delete(r.RouterBase[n].Neighbours, r.ID)
 }
 
-func (r *SMRouter)GetLink (n RouteID) *Link {
+func (r *SMRouter) GetLink(n RouteID) *Link {
 	var linkKey string
 	if n < r.ID {
 		linkKey = GetLinkKey(n, r.ID)
@@ -778,4 +772,3 @@ func (r *SMRouter)GetLink (n RouteID) *Link {
 	}
 	return nil
 }
-

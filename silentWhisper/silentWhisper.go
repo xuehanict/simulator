@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 	//"github.com/davecgh/go-spew/spew"
-	"log"
 	"github.com/davecgh/go-spew/spew"
+	"log"
 )
 
 type RouteID int
@@ -150,7 +150,7 @@ func (r *SWRouter) onMsg(msg interface{}) {
 	case *htlc:
 		r.onHTLC(msg.(*htlc))
 	case *htlcFullfill:
-	//	SWLogger.Printf("R%v收到hff %v", r.ID, msg.(*htlcFullfill))
+		//	SWLogger.Printf("R%v收到hff %v", r.ID, msg.(*htlcFullfill))
 		r.onHTLCFullfill(msg.(*htlcFullfill))
 	case *addrWithRoot:
 		r.onAddrWithRoot(msg.(*addrWithRoot))
@@ -181,12 +181,12 @@ func (r *SWRouter) onPayReq(req *payReq) {
 		linkValue, err := r.getLinkValue(nextHop, LINK_DIR_RIGHT)
 
 		if nextHop == -1 {
-			SWLogger.Printf("router %v handle payreq failed, because" +
+			SWLogger.Printf("router %v handle payreq failed, because"+
 				"cann't find the nexthop", r.ID)
 			SWLogger.Printf("router %v root %v addr is %v",
 				r.ID, req.root, spew.Sdump(r.AddrWithRoots[req.root]))
 
-			SWLogger.Printf("router %v payreq is %s\n", r.ID,spew.Sdump(req))
+			SWLogger.Printf("router %v payreq is %s\n", r.ID, spew.Sdump(req))
 			for n := range r.Neighbours {
 				SWLogger.Printf("router %v 邻居root %v 的地址是：%s\n",
 					r.ID, n, spew.Sdump(r.RouterBase[n].AddrWithRoots[req.root]))
@@ -206,7 +206,7 @@ func (r *SWRouter) onPayReq(req *payReq) {
 				path:      path,
 				reason:    err.Error(),
 			})
-		}else {
+		} else {
 			if req.value > linkValue {
 				req.value = linkValue
 			}
@@ -226,7 +226,7 @@ func (r *SWRouter) onHTLC(h *htlc) {
 		r.htlcBase[h.requestID] = make(map[RouteID]*htlc)
 		dir = true
 	} else {
-		if _, ok :=r.htlcBase[h.requestID][h.root]; !ok {
+		if _, ok := r.htlcBase[h.requestID][h.root]; !ok {
 			dir = true
 		} else {
 			dir = false
@@ -441,7 +441,7 @@ func (r *SWRouter) onAddrWithRoot(awr *addrWithRoot) {
 	if !ok || addr.Time < awr.time {
 		changed = true
 	} else if addr.Time == awr.time &&
-		len(addr.Addr) > len(awr.addr)+ ADDR_INTERVAL {
+		len(addr.Addr) > len(awr.addr)+ADDR_INTERVAL {
 		changed = true
 	}
 	if changed {
@@ -528,7 +528,7 @@ func (r *SWRouter) GetNextHop(dest string, root RouteID,
 			cpl := getCPL(r.RouterBase[n].AddrWithRoots[root].Addr,
 				dest, ADDR_INTERVAL)
 			// 这个地方和模拟器中代码不一样
-			if cpl == bestCpl + 1 && r.RouterBase[n].AddrWithRoots[root].Parent == r.ID{
+			if cpl == bestCpl+1 && r.RouterBase[n].AddrWithRoots[root].Parent == r.ID {
 				return n
 			}
 		}

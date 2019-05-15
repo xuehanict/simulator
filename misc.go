@@ -1,17 +1,17 @@
 package main
 
 import (
-	sw "github.com/lightningnetwork/simulator/silentWhisper"
-	"os"
-	"fmt"
 	"bufio"
+	"fmt"
+	sw "github.com/lightningnetwork/simulator/silentWhisper"
 	"io"
-	"strings"
+	"os"
 	"strconv"
+	"strings"
 )
 
 const (
-	tenNodesGraph = "data/ten_nodes.json"
+	tenNodesGraph     = "data/ten_nodes.json"
 	tenNodesGraphHalf = "data/ten_nodes_half.json"
 )
 
@@ -31,17 +31,17 @@ type testNode struct {
 type testEdge struct {
 	Node1     sw.RouteID `json:"node_1"`
 	Node2     sw.RouteID `json:"node_2"`
-	Capacity1 float64   `json:"capacity1"`
-	Capacity2 float64   `json:"capacity2"`
+	Capacity1 float64    `json:"capacity1"`
+	Capacity2 float64    `json:"capacity2"`
 }
 
 type tran struct {
-	src int
+	src  int
 	dest int
-	val float64
+	val  float64
 }
 
-func generateTrans (filePath string) []tran {
+func generateTrans(filePath string) []tran {
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -51,7 +51,7 @@ func generateTrans (filePath string) []tran {
 	defer f.Close()
 
 	br := bufio.NewReader(f)
-	trans := make([]tran,0)
+	trans := make([]tran, 0)
 	for {
 		line, _, err := br.ReadLine()
 		if err == io.EOF {
@@ -63,15 +63,14 @@ func generateTrans (filePath string) []tran {
 		splitStr := strings.Split(string(line), " ")
 		val, _ := strconv.ParseFloat(splitStr[0], 64)
 		src, _ := strconv.Atoi(splitStr[1])
-		dest, _:= strconv.Atoi(splitStr[2])
+		dest, _ := strconv.Atoi(splitStr[2])
 
-		trans = append(trans,tran{
-			src: src,
+		trans = append(trans, tran{
+			src:  src,
 			dest: dest,
-			val: val,
+			val:  val,
 		})
 	}
 
 	return trans
 }
-
