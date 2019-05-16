@@ -53,12 +53,12 @@ func MaraEval(m *mara.Mara, trans []mara.Tran,
 	for _, lb := range amoutLB {
 		for _, maxL := range pathLength {
 
-			total := 0
-			success := 0
+			total := 0.0
+			success := 0.0
 			pathNumRecord := make([]int, 0)
 			usedNumRecord := make([]int, 0)
-			pathNumTotal := 0
-			usedNumTotal := 0
+			pathNumTotal := 0.0
+			usedNumTotal := 0.0
 			for _, tran := range trans {
 				total++
 				pathN, usedN, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
@@ -103,6 +103,7 @@ func MaraEval(m *mara.Mara, trans []mara.Tran,
 				"amountLBrate":    lb,
 				"averageAllpath":  pathNumTotal / success,
 				"averageUsedPath": usedNumTotal / success,
+                "sussessRate":     success / total
 			}).Infof("a round test result shows")
 		}
 	}
