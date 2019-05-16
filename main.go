@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/lightningnetwork/simulator/mara"
+
+	//"github.com/lightningnetwork/simulator/mara"
 	"github.com/urfave/cli"
 	"log"
 	"os"
@@ -51,9 +53,10 @@ func main() {
 
 			wg := sync.WaitGroup{}
 			for i := 0; i < len(amountLB); i++ {
-				wg.Add(1)
 				time.Sleep(time.Second)
+				//fmt.Printf("=============%v", i)
 				go func() {
+					wg.Add(1)
 					m, trans := mara.GetRippleMaraAndTrans("./data")
 					MaraEval(m, trans[0:tranNum], amountLB[i:i+1], pathLenth)
 					wg.Done()
