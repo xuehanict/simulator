@@ -49,7 +49,7 @@ func main() {
 		switch algo {
 		case "mara":
 			amountLB := []float64{0.01, 0.03, 0.05, 0.07, 0.1}
-			pathLenth := []int{6, 8, 10, 12, 14}
+			pathLenth := []int{6, 8, 10}
 
 			wg := sync.WaitGroup{}
 			i := 0

@@ -67,8 +67,8 @@ func MaraEval(m *mara.Mara, trans []mara.Tran,
 					success++
 					pathNumRecord = append(pathNumRecord, pathN)
 					usedNumRecord = append(usedNumRecord, usedN)
-					pathNumTotal += pathN
-					usedNumTotal += usedN
+					pathNumTotal += float64(pathN)
+					usedNumTotal += float64(usedN)
 
 					log.WithFields(logrus.Fields{
 						"result":  true,
@@ -103,7 +103,7 @@ func MaraEval(m *mara.Mara, trans []mara.Tran,
 				"amountLBrate":    lb,
 				"averageAllpath":  pathNumTotal / success,
 				"averageUsedPath": usedNumTotal / success,
-                "sussessRate":     success / total
+                "sussessRate":     success / total,
 			}).Infof("a round test result shows")
 		}
 	}
