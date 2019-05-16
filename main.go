@@ -52,15 +52,20 @@ func main() {
 			pathLenth := []int{6, 8, 10, 12, 14}
 
 			wg := sync.WaitGroup{}
-			for i := 0; i < len(amountLB); i++ {
+			i := 0
+			for {
 				time.Sleep(time.Second)
 				//fmt.Printf("=============%v", i)
-				go func() {
+				if i == len(amountLB) {
+					break
+				}
+				go func(idx int) {
 					wg.Add(1)
 					m, trans := mara.GetRippleMaraAndTrans("./data")
-					MaraEval(m, trans[0:tranNum], amountLB[i:i+1], pathLenth)
+					MaraEval(m, trans[0:tranNum], amountLB[idx:idx+1], pathLenth)
 					wg.Done()
-				}()
+				}(i)
+				i++
 			}
 			wg.Wait()
 
