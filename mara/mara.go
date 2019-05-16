@@ -90,9 +90,6 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 				fmt.Printf("insert to heap error")
 			}
 		} else {
-			if id == 3 {
-				fmt.Printf("insert 3 into heap")
-			}
 			err := capcity.Insert(utils.RouterID(id), MAX_ADJACENT)
 			if err != nil {
 				fmt.Printf("insert to heap error")
