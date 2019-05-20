@@ -80,6 +80,7 @@ func GetRippleMaraAndTrans(data string) (*Mara, []Tran) {
 			Channels: links,
 			DAGs:     make(map[utils.RouterID]*DAG),
 			SPTs:     make(map[utils.RouterID]*DAG),
+			Distance: make(map[utils.RouterID]map[utils.RouterID]float64),
 		},
 	}
 

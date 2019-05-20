@@ -115,7 +115,8 @@ func TestPayment(t *testing.T) {
 	paths := m.getRoutes(src, dest, 150)
 	spew.Dump(paths)
 	//	spew.Dump(m.SPTs[dest])
-	_, _, result := m.SendPaymentWithBond(src, dest, 150, 6, 0.01)
+	_, _, result := m.SendPaymentWithBond(src, dest, MARA_MC,
+		150, 6, 0.01)
 	spew.Dump(result)
 }
 
@@ -147,7 +148,7 @@ func TestRipple(t *testing.T) {
 		total++
 
 		len1, len2, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
-			utils.RouterID(tran.Dest), utils.Amount(tran.Val), 6, 0.01)
+			utils.RouterID(tran.Dest), MARA_SPE, utils.Amount(tran.Val), 6, 0.01)
 		if err == nil {
 			success++
 		}
@@ -204,6 +205,7 @@ func parseTestJson(filePath string) (*Graph, error) {
 		Nodes:    nodes,
 		DAGs:     make(map[utils.RouterID]*DAG),
 		SPTs:     make(map[utils.RouterID]*DAG),
+		Distance: make(map[utils.RouterID]map[utils.RouterID]float64),
 	}
 	return graph, nil
 }

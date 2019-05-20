@@ -44,14 +44,14 @@ func initLoger() *logrus.Logger {
 	return log
 }
 
-func MaraEval(m *mara.Mara, trans []mara.Tran,
-	amoutLB []float64, pathLength []int) {
+func MaraEval(m *mara.Mara, trans []mara.Tran, algo int,
+	amoutLB []float64, pathAddLength []float64) {
 
 	log := initLoger()
 	backupChannelBase := utils.CopyChannels(m.Channels)
 
 	for _, lb := range amoutLB {
-		for _, maxL := range pathLength {
+		for _, maxL := range pathAddLength {
 
 			total := 0.0
 			success := 0.0
@@ -62,7 +62,7 @@ func MaraEval(m *mara.Mara, trans []mara.Tran,
 			for _, tran := range trans {
 				total++
 				pathN, usedN, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
-					utils.RouterID(tran.Dest), utils.Amount(tran.Val), maxL, lb)
+					utils.RouterID(tran.Dest), algo,utils.Amount(tran.Val), maxL, lb)
 				if err == nil {
 					success++
 					pathNumRecord = append(pathNumRecord, pathN)

@@ -48,8 +48,8 @@ func main() {
 		tranNum := c.Int("trans_num")
 		switch algo {
 		case "mara":
-			amountLB := []float64{0.01, 0.03, 0.05, 0.07, 0.1}
-			pathLenth := []int{6, 8, 10}
+			amountLB := []float64{0.05, 0.10, 0.15, 0.20, 0.25}
+			pathAddLenth := []float64{1, 2, 3, 4, 5, 6}
 
 			wg := sync.WaitGroup{}
 			i := 0
@@ -62,7 +62,7 @@ func main() {
 				go func(idx int) {
 					wg.Add(1)
 					m, trans := mara.GetRippleMaraAndTrans("./data")
-					MaraEval(m, trans[0:tranNum], amountLB[idx:idx+1], pathLenth)
+					MaraEval(m, trans[0:tranNum], mara.MARA_MC,amountLB[idx:idx+1], pathAddLenth)
 					wg.Done()
 				}(i)
 				i++

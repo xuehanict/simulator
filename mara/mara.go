@@ -17,8 +17,10 @@ type Mara struct {
 
 const (
 	PROBE_AMOUNT_RATE  = 0.01
-	DEFAULT_PATH_LENTH = 6
+	DEFAULT_PATH_ADD_LENTH = 1
 	MAX_ADJACENT       = 100000
+	MARA_MC			   = 0
+	MARA_SPE		   = 1
 )
 
 type capElement struct {
@@ -79,6 +81,11 @@ func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
 
+	if _, ok := m.SPTs[startID]; !ok {
+		fmt.Printf("算最短路\n")
+		m.SPTs[startID], m.Distance[startID] = dijkstra(m.Nodes, startID)
+		fmt.Printf("算完最短路\n")
+	}
 	ordering := make([]utils.RouterID, 1)
 	ordering[0] = startID
 
@@ -171,7 +178,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 	nodes := m.Nodes
 	if _, ok := m.SPTs[startID]; !ok {
 		fmt.Printf("算最短路\n")
-		m.SPTs[startID] = dijkstra(m.Nodes, startID)
+		m.SPTs[startID], m.Distance[startID] = dijkstra(m.Nodes, startID)
 		fmt.Printf("算完最短路\n")
 	}
 	spt := m.SPTs[startID]
@@ -238,23 +245,24 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 	amount utils.Amount) [][]utils.RouterID {
 
 	if _, ok := m.DAGs[dest]; !ok {
-		//m.DAGs[dest] = m.MaraSPE(dest)
-		//m.DAGs[dest] = m.MaraMcOPT(dest)
 		m.DAGs[dest] = m.MaraSpeOpt(dest)
 	}
 	fmt.Printf("DAG构架能完成\n")
 	return m.nextHop(nil, src, dest, amount,
-		DEFAULT_PATH_LENTH, PROBE_AMOUNT_RATE)
+		DEFAULT_PATH_ADD_LENTH, PROBE_AMOUNT_RATE)
 }
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
-func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
-	amount utils.Amount, maxLenth int, amtRate float64) [][]utils.RouterID {
+func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
+	amount utils.Amount, maxLenth float64, amtRate float64) [][]utils.RouterID {
 
 	if _, ok := m.DAGs[dest]; !ok {
-		//m.DAGs[dest] = m.MaraSPE(dest)
-		m.DAGs[dest] = m.MaraMcOPT(dest)
-		//m.DAGs[dest] = m.MaraSpeOpt(dest)
+		switch algo {
+		case MARA_MC :
+			m.DAGs[dest] = m.MaraMcOPT(dest)
+		case MARA_SPE:
+			m.DAGs[dest] = m.MaraSpeOpt(dest)
+		}
 	}
 	fmt.Printf("DAG构架能完成\n")
 	return m.nextHop(nil, src, dest, amount,
@@ -262,7 +270,7 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
 }
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	dest utils.RouterID, amount utils.Amount,
-	maxLength int, amtRate float64) [][]utils.RouterID {
+	maxLength float64, amtRate float64) [][]utils.RouterID {
 
 	// arrived in the end. we return the final path.
 	if current == dest {
@@ -279,7 +287,7 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
-				len(curPath) >= maxLength {
+				float64(len(curPath)) >= maxLength {
 				continue
 			}
 
@@ -309,13 +317,14 @@ func (m *Mara) SendPayment(src, dest utils.RouterID,
 	return err
 }
 
-func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID,
-	amount utils.Amount, maxLenth int, amtRate float64) (int, int, error) {
+func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
+	amount utils.Amount, maxLenth float64, amtRate float64) (int, int, error) {
 		
 	if amount == 0 {
 		return 0, 0, nil
 	}	
-	routes := m.getRoutesWithBond(src, dest, amount, maxLenth, amtRate)
+	routes := m.getRoutesWithBond(src, dest, algo,amount,
+		m.Distance[dest][src] + maxLenth, amtRate)
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
 		return 0, 0, err

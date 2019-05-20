@@ -21,7 +21,7 @@ func (d *disElement) Key() float64 {
 	return d.distance
 }
 
-func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
+func dijkstra(nodes []*Node, start utils.RouterID) (*DAG, map[utils.RouterID]float64) {
 
 	mNodes := copyNodes(nodes)
 
@@ -84,5 +84,5 @@ func dijkstra(nodes []*Node, start utils.RouterID) *DAG {
 	return &DAG{
 		Root:    mNodes[start],
 		vertexs: mNodes,
-	}
+	}, distance
 }

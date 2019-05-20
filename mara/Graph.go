@@ -37,6 +37,8 @@ type Graph struct {
 	DAGs map[utils.RouterID]*DAG
 	// 最短路树，用来构建MC-SPE
 	SPTs map[utils.RouterID]*DAG
+	// key是dest节点，value为到key的距离，二级索引是src
+	Distance map[utils.RouterID]map[utils.RouterID]float64
 }
 
 func NewDAG(root *Node, len int) *DAG {
