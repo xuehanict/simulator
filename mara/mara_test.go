@@ -112,11 +112,13 @@ func TestPayment(t *testing.T) {
 	src := utils.RouterID(1)
 	dest := utils.RouterID(9)
 
-	paths := m.getRoutes(src, dest, 150)
-	spew.Dump(paths)
+//	paths := m.getRoutes(src, dest, 10)
+//	spew.Dump(paths)
 	//	spew.Dump(m.SPTs[dest])
-	_, _, result := m.SendPaymentWithBond(src, dest, MARA_MC,
-		150, 6, 0.01)
+	total, _, result := m.SendPaymentWithBond(src, dest, MARA_MC,
+		10, 0, 0.01)
+	//spew.Dump(m.DAGs[dest])
+	spew.Dump(total)
 	spew.Dump(result)
 }
 

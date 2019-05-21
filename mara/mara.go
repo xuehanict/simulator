@@ -287,7 +287,7 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
-				float64(len(curPath)) >= maxLength {
+				float64(len(curPath)) > maxLength {
 				continue
 			}
 
@@ -318,13 +318,13 @@ func (m *Mara) SendPayment(src, dest utils.RouterID,
 }
 
 func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
-	amount utils.Amount, maxLenth float64, amtRate float64) (int, int, error) {
+	amount utils.Amount, addLenth float64, amtRate float64) (int, int, error) {
 		
 	if amount == 0 {
 		return 0, 0, nil
 	}	
 	routes := m.getRoutesWithBond(src, dest, algo,amount,
-		m.Distance[dest][src] + maxLenth, amtRate)
+		m.Distance[dest][src] + addLenth, amtRate)
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
 		return 0, 0, err
