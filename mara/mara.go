@@ -23,6 +23,7 @@ const (
 	MAX_ADJACENT       = 100000
 	MARA_MC			   = 0
 	MARA_SPE		   = 1
+	SELECT_BOUND	   = 20
 )
 
 type capElement struct {
@@ -286,8 +287,6 @@ func (s parentSorter) Swap (i, j int)  {
 
 }
 
-
-
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	dest utils.RouterID, amount utils.Amount,
 	maxLength float64, amtRate float64) [][]utils.RouterID {
@@ -315,7 +314,10 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 		sort.Sort(sorter)
 
 		// TODO(xuehan) 判断长度
-		for _, pnode := range sorter[0:100] {
+		if len(sorter) > SELECT_BOUND {
+			sorter = sorter[0:SELECT_BOUND]
+		}
+		for _, pnode := range sorter{
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
