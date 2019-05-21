@@ -6,6 +6,8 @@ import (
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	fibHeap "github.com/starwander/GoFibonacciHeap"
+	"sort"
+
 	//	"github.com/davecgh/go-spew/spew"
 	"math"
 )
@@ -268,6 +270,24 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
 	return m.nextHop(nil, src, dest, amount,
 		maxLenth, amtRate)
 }
+
+type parentSorter []utils.RouterID
+
+
+func (s parentSorter) Len () int {
+	return len(s)
+}
+
+func (s parentSorter) Less (i, j int) bool {
+	return false
+}
+
+func (s parentSorter) Swap (i, j int)  {
+
+}
+
+
+
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	dest utils.RouterID, amount utils.Amount,
 	maxLength float64, amtRate float64) [][]utils.RouterID {
@@ -283,7 +303,19 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 		copy(newCurPath, curPath)
 		newCurPath[len(newCurPath)-1] = current
 
-		for _, pnode := range m.DAGs[dest].vertexs[current].Parents {
+		sorter := parentSorter(m.DAGs[dest].vertexs[current].Parents)
+		sorter.Less = func(i, j int) bool {
+			vi := utils.GetLinkValue(current, sorter[i], m.Channels)
+			vj := utils.GetLinkValue(current,sorter[i], m.Channels)
+			return vi > vj
+		}
+		sorter.Swap = func(i, j int) {
+			sorter[i], sorter[j] = sorter[j], sorter[i]
+		}
+		sort.Sort(sorter)
+
+		// TODO(xuehan) 判断长度
+		for _, pnode := range sorter[0:100] {
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
@@ -383,7 +415,7 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 		}
 	}
 	if len(routes) == 0 {
-		return nil, fmt.Errorf("未找到路径")
+		return nil, fmt.Errorf("cannot find path.")
 	}
 	return m.linearProgram(routes, channelIndexs, routeMins, channelVals, amount)
 }

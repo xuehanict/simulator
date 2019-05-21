@@ -59,6 +59,8 @@ func MaraEval(m *mara.Mara, trans []mara.Tran, algo int,
 			usedNumRecord := make([]int, 0)
 			pathNumTotal := 0.0
 			usedNumTotal := 0.0
+			notFound := 0
+			allcFailed := 0
 			for _, tran := range trans {
 				total++
 				pathN, usedN, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
