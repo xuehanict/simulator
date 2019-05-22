@@ -78,6 +78,15 @@ func MaraEval(m *mara.Mara, trans []mara.Tran, algo int,
 						"total":   total,
 					}).Trace("execute a payment.")
 				} else {
+					if payError,ok := err.(*mara.PaymentError); ok {
+						switch payError.Code {
+						case mara.FIND_PATH_FAILED:
+							notFound ++
+						case mara.ALLOCARION_FAILED:
+							allcFailed ++
+						}
+					}
+
 					log.WithFields(logrus.Fields{
 						"result":  false,
 						"error":   err.Error(),

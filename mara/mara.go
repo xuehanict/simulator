@@ -359,12 +359,26 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 	}	
 	routes := m.getRoutesWithBond(src, dest, algo,amount,
 		m.Distance[dest][src] + addLenth, amtRate)
+	if len(routes) == 0 {
+		return 0, 0, &PaymentError{
+			Code:FIND_PATH_FAILED,
+			Description: "cannot find a path",
+		}
+	}
+
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, &PaymentError{
+			Code:ALLOCARION_FAILED,
+			Description: "allocation failed :" + err.Error(),
+		}
 	}
+
 	if len(result) != len(routes) {
-		return 0, 0, fmt.Errorf("allocation result don't match routes")
+		return 0, 0, &PaymentError{
+			Code: ALLOCATION_NOT_MATCH_ROUTE,
+			Description: "allocation donn't match routes",
+		}
 	}
 
 	selectedRoutes := make([][]utils.RouterID, 0)
@@ -380,11 +394,20 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 	}
 
 	if math.Abs(total-float64(amount)) > 0.0000000001 {
-		return 0, 0, fmt.Errorf("allocation failed")
+		return 0, 0, &PaymentError{
+			Code: ALLOCARION_FAILED,
+			Description: "allocation failed.",
+		}
 	}
 
 	err = m.updateWeights(selectedRoutes, selectedResult)
-	return len(routes), len(selectedRoutes), err
+	if err != nil {
+		return len(routes), len(selectedRoutes), &PaymentError{
+			Code: UPDATE_LINK_FAILED,
+			Description: fmt.Sprintf("update link failed :%v", err.Error()),
+		}	
+	}
+	return 0, 0, nil	
 }
 
 func (m *Mara) allocMoney(routes [][]utils.RouterID,
@@ -417,7 +440,7 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 		}
 	}
 	if len(routes) == 0 {
-		return nil, fmt.Errorf("cannot find path.")
+		return nil, fmt.Errorf("cannot find path")
 	}
 	return m.linearProgram(routes, channelIndexs, routeMins, channelVals, amount)
 }
