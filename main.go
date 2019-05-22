@@ -48,8 +48,8 @@ func main() {
 		tranNum := c.Int("trans_num")
 		switch algo {
 		case "mara":
-			amountLB := []float64{0.05, 0.10, 0.15, 0.20, 0.25}
-			pathAddLenth := []float64{2, 3, 4, 5, 6}
+			amountLB := []float64{0.05}
+			pathAddLenth := []float64{2}
 
 			wg := sync.WaitGroup{}
 			i := 0

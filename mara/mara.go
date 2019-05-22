@@ -409,7 +409,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 			Description: fmt.Sprintf("update link failed :%v", err.Error()),
 		}	
 	}
-	return 0, 0, nil	
+	return len(routes), len(selectedRoutes), nil
 }
 
 func (m *Mara) allocMoney(routes [][]utils.RouterID,

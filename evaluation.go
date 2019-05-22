@@ -12,13 +12,13 @@ import (
 
 
 func initLoger() *logrus.Logger {
-	file := time.Now().Format("20060102030505") + ".sum" //文件名
+	file := "logs/" + time.Now().Format("20060102030505") + ".sum" //文件名
 	summaryLogFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
 	}
 
-	file1 := time.Now().Format("20060102030505") + ".log" //文件名
+	file1 := "logs/" + time.Now().Format("20060102030505") + ".log" //文件名
 	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
@@ -76,6 +76,11 @@ func MaraEval(m *mara.Mara, trans []mara.Tran, algo int,
 						"result":  true,
 						"success": success,
 						"total":   total,
+						"from": tran.Src,
+						"to": tran.Dest,
+						"amt": tran.Val,
+						"pathN": pathN,
+						"usedN": usedN,
 					}).Trace("execute a payment.")
 				} else {
 					if payError,ok := err.(*mara.PaymentError); ok {
@@ -92,6 +97,11 @@ func MaraEval(m *mara.Mara, trans []mara.Tran, algo int,
 						"error":   err.Error(),
 						"success": success,
 						"total":   total,
+						"from": tran.Src,
+						"to": tran.Dest,
+						"amt": tran.Val,
+						"pathN": pathN,
+						"usedN": usedN,
 					}).Trace("execute a payment.")
 				}
 
