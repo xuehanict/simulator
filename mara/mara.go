@@ -272,19 +272,25 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
 		maxLenth, amtRate)
 }
 
-type parentSorter []utils.RouterID
+type parentSorter struct {
+	current utils.RouterID
+	parents	[]utils.RouterID
+	channels map[string]*utils.Link
+}
 
 
 func (s parentSorter) Len () int {
-	return len(s)
+	return len(s.parents)
 }
 
 func (s parentSorter) Less (i, j int) bool {
-	return false
+	vi := utils.GetLinkValue(s.current, utils.RouterID(i), s.channels)
+	vj := utils.GetLinkValue(s.current, utils.RouterID(j), s.channels)
+	return vi > vj
 }
 
 func (s parentSorter) Swap (i, j int)  {
-
+	s.parents[i], s.parents[j] = s.parents[j], s.parents[i]
 }
 
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
@@ -302,22 +308,18 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 		copy(newCurPath, curPath)
 		newCurPath[len(newCurPath)-1] = current
 
-		sorter := parentSorter(m.DAGs[dest].vertexs[current].Parents)
-		sorter.Less = func(i, j int) bool {
-			vi := utils.GetLinkValue(current, sorter[i], m.Channels)
-			vj := utils.GetLinkValue(current,sorter[i], m.Channels)
-			return vi > vj
-		}
-		sorter.Swap = func(i, j int) {
-			sorter[i], sorter[j] = sorter[j], sorter[i]
+		sorter := parentSorter{
+			current: current,
+			parents: m.DAGs[dest].vertexs[current].Parents,
+			channels: m.Channels,
 		}
 		sort.Sort(sorter)
 
 		// TODO(xuehan) 判断长度
-		if len(sorter) > SELECT_BOUND {
-			sorter = sorter[0:SELECT_BOUND]
+		if sorter.Len() > SELECT_BOUND {
+			sorter.parents = sorter.parents[0:SELECT_BOUND]
 		}
-		for _, pnode := range sorter{
+		for _, pnode := range sorter.parents{
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
