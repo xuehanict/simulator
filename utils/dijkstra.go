@@ -1,8 +1,7 @@
-package mara
+package utils
 
 import (
 	"fmt"
-	"github.com/lightningnetwork/simulator/utils"
 	fibHeap "github.com/starwander/GoFibonacciHeap"
 )
 
@@ -10,7 +9,7 @@ const INF = 0x3f3f3f3f
 
 type disElement struct {
 	distance float64
-	id       utils.RouterID
+	id       RouterID
 }
 
 func (d *disElement) Tag() interface{} {
@@ -21,23 +20,23 @@ func (d *disElement) Key() float64 {
 	return d.distance
 }
 
-func dijkstra(nodes []*Node, start utils.RouterID) (*DAG, map[utils.RouterID]float64) {
+func Dijkstra(nodes []*Node, start RouterID) (*DAG, map[RouterID]float64) {
 
-	mNodes := copyNodes(nodes)
+	mNodes := CopyNodes(nodes)
 
 	// 初始化距离和已求出最短距离的集合flag,distance表示start节点到其他节点的距离，
 	// flag表示已经求出这个节点的最短距离
 	// 最后空间换时间，distance数组用来直接索引距离，heap用来直接取最小值
-	distance := make(map[utils.RouterID]float64)
+	distance := make(map[RouterID]float64)
 	heap := fibHeap.NewFibHeap()
-	flag := make(map[utils.RouterID]bool)
+	flag := make(map[RouterID]bool)
 	for id := range mNodes {
-		err := heap.InsertValue(&disElement{INF, utils.RouterID(id)})
+		err := heap.InsertValue(&disElement{INF, RouterID(id)})
 		if err != nil {
 			fmt.Printf("insert value faced err :%v", err)
 		}
-		distance[utils.RouterID(id)] = INF
-		flag[utils.RouterID(id)] = false
+		distance[RouterID(id)] = INF
+		flag[RouterID(id)] = false
 	}
 
 	// 针对start节点初始化
@@ -54,7 +53,7 @@ func dijkstra(nodes []*Node, start utils.RouterID) (*DAG, map[utils.RouterID]flo
 
 	for i := 1; i < len(mNodes); i++ {
 		tmpK, min := heap.ExtractMin()
-		k := tmpK.(utils.RouterID)
+		k := tmpK.(RouterID)
 		flag[k] = true
 		for _, node := range nodes[k].Neighbours {
 			tmp := min + 1
@@ -77,12 +76,12 @@ func dijkstra(nodes []*Node, start utils.RouterID) (*DAG, map[utils.RouterID]flo
 	// 不光要让能找到父节点，还要能找到孩子节点
 	for id, n := range mNodes {
 		for _, p := range n.Parents {
-			mNodes[p].Children = append(mNodes[p].Children, utils.RouterID(id))
+			mNodes[p].Children = append(mNodes[p].Children, RouterID(id))
 		}
 	}
 
 	return &DAG{
 		Root:    mNodes[start],
-		vertexs: mNodes,
+		Vertexs: mNodes,
 	}, distance
 }

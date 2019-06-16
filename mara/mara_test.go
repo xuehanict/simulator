@@ -142,7 +142,11 @@ func TestGetRoutesSpec(t *testing.T) {
 }
 
 func TestRipple(t *testing.T) {
-	m, trans := GetRippleMaraAndTrans("../data")
+	graph := utils.GetGraph("../data")
+	m := &Mara{
+		Graph: graph,
+	}
+	trans := utils.GenerateTrans("../data/finalSets/static/sampleTr-1.txt")
 	total := 0
 	success := 0
 
@@ -169,7 +173,7 @@ func TestRipple(t *testing.T) {
 	time.Sleep(3 * time.Second)
 }
 
-func parseTestJson(filePath string) (*Graph, error) {
+func parseTestJson(filePath string) (*utils.Graph, error) {
 
 	var g testGraph
 	graphJson, err := ioutil.ReadFile(filePath)
@@ -180,11 +184,11 @@ func parseTestJson(filePath string) (*Graph, error) {
 		fmt.Printf("%v", err)
 		os.Exit(1)
 	}
-	nodes := make([]*Node, len(g.Nodes))
+	nodes := make([]*utils.Node, len(g.Nodes))
 	edges := make(map[string]*utils.Link)
 
 	for _, n := range g.Nodes {
-		nodes[n.Id] = &Node{
+		nodes[n.Id] = &utils.Node{
 			ID:         n.Id,
 			Neighbours: make([]utils.RouterID, 0),
 		}
@@ -202,11 +206,11 @@ func parseTestJson(filePath string) (*Graph, error) {
 		nodes[link.Part2].Neighbours = append(nodes[link.Part2].Neighbours, link.Part1)
 	}
 
-	graph := &Graph{
+	graph := &utils.Graph{
 		Channels: edges,
 		Nodes:    nodes,
-		DAGs:     make(map[utils.RouterID]*DAG),
-		SPTs:     make(map[utils.RouterID]*DAG),
+		DAGs:     make(map[utils.RouterID]*utils.DAG),
+		SPTs:     make(map[utils.RouterID]*utils.DAG),
 		Distance: make(map[utils.RouterID]map[utils.RouterID]float64),
 	}
 	return graph, nil

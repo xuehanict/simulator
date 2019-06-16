@@ -2,7 +2,6 @@ package mara
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	fibHeap "github.com/starwander/GoFibonacciHeap"
@@ -14,7 +13,7 @@ import (
 
 type Mara struct {
 	Name string
-	*Graph
+	*utils.Graph
 }
 
 const (
@@ -39,7 +38,7 @@ func (c *capElement) Key() float64 {
 	return c.capcity
 }
 
-func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
+func (m *Mara) MaraMC(startID utils.RouterID) *utils.DAG {
 	nodes := m.Nodes
 	S := make(map[utils.RouterID]struct{})
 	T := make(map[utils.RouterID]struct{})
@@ -81,12 +80,12 @@ func (m *Mara) MaraMC(startID utils.RouterID) *DAG {
 }
 
 // 优化过的MaraMC算法，时间复杂度降低了很多
-func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
+func (m *Mara) MaraMcOPT(startID utils.RouterID) *utils.DAG {
 	nodes := m.Nodes
 
 	if _, ok := m.SPTs[startID]; !ok {
 		fmt.Printf("算最短路\n")
-		m.SPTs[startID], m.Distance[startID] = dijkstra(m.Nodes, startID)
+		m.SPTs[startID], m.Distance[startID] = utils.Dijkstra(m.Nodes, startID)
 		fmt.Printf("算完最短路\n")
 	}
 	ordering := make([]utils.RouterID, 1)
@@ -94,7 +93,7 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *DAG {
 
 	capcity := fibHeap.NewFibHeap()
 	for id, node := range m.Nodes {
-		if node.checkLink(startID) {
+		if node.CheckLink(startID) {
 			err := capcity.Insert(utils.RouterID(id), MAX_ADJACENT-1)
 			if err != nil {
 				fmt.Printf("insert to heap error")
@@ -177,11 +176,11 @@ func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
 */
 
 // 优化过的MaraSPE，时间复杂度降低了很多
-func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
+func (m *Mara) MaraSpeOpt(startID utils.RouterID) *utils.DAG {
 	nodes := m.Nodes
 	if _, ok := m.SPTs[startID]; !ok {
 		fmt.Printf("算最短路\n")
-		m.SPTs[startID], m.Distance[startID] = dijkstra(m.Nodes, startID)
+		m.SPTs[startID], m.Distance[startID] = utils.Dijkstra(m.Nodes, startID)
 		fmt.Printf("算完最短路\n")
 	}
 	spt := m.SPTs[startID]
@@ -201,7 +200,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 	// 对start的邻居初始化
 	for _, i := range nodes[startID].Neighbours {
 		capcity[i] = MAX_ADJACENT - 1
-		if spt.vertexs[i].checkParent(startID) {
+		if spt.Vertexs[i].CheckParent(startID) {
 			err := T.Insert(i, capcity[i])
 			if err != nil {
 				fmt.Printf("insert value to T faced error :%v", err)
@@ -222,7 +221,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 				continue
 			}
 			capcity[i] = capcity[i] - 1
-			if spt.vertexs[i].checkParent(id) {
+			if spt.Vertexs[i].CheckParent(id) {
 				if tmp := T.GetTag(i); tmp != math.Inf(-1) {
 					err := T.DecreaseKey(i, capcity[i])
 					if err != nil {
@@ -245,7 +244,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *DAG {
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutes(src, dest utils.RouterID,
-	amount utils.Amount) [][]utils.RouterID {
+	amount utils.Amount) []utils.Path {
 
 	if _, ok := m.DAGs[dest]; !ok {
 		m.DAGs[dest] = m.MaraSpeOpt(dest)
@@ -257,7 +256,7 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
-	amount utils.Amount, maxLenth float64, amtRate float64) [][]utils.RouterID {
+	amount utils.Amount, maxLenth float64, amtRate float64) []utils.Path {
 
 	if _, ok := m.DAGs[dest]; !ok {
 		switch algo {
@@ -295,22 +294,22 @@ func (s parentSorter) Swap (i, j int)  {
 
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	dest utils.RouterID, amount utils.Amount,
-	maxLength float64, amtRate float64) [][]utils.RouterID {
+	maxLength float64, amtRate float64) []utils.Path {
 
 	// arrived in the end. we return the final path.
 	if current == dest {
 		finalPath := append(curPath, current)
-		return [][]utils.RouterID{finalPath}
+		return []utils.Path{finalPath}
 	} else {
 		// we continue to pass the request until the destination.
-		paths := make([][]utils.RouterID, 0)
+		paths := make([]utils.Path, 0)
 		newCurPath := make([]utils.RouterID, len(curPath)+1)
 		copy(newCurPath, curPath)
 		newCurPath[len(newCurPath)-1] = current
 
 		sorter := parentSorter{
 			current: current,
-			parents: m.DAGs[dest].vertexs[current].Parents,
+			parents: m.DAGs[dest].Vertexs[current].Parents,
 			channels: m.Channels,
 		}
 		sort.Sort(sorter)
@@ -348,8 +347,8 @@ func (m *Mara) SendPayment(src, dest utils.RouterID,
 	if err != nil {
 		return err
 	}
-	err = m.updateWeights(routes, result)
-	spew.Dump(m.Channels)
+	err = m.UpdateWeights(routes, result)
+//	spew.Dump(m.Channels)
 	return err
 }
 
@@ -383,7 +382,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 		}
 	}
 
-	selectedRoutes := make([][]utils.RouterID, 0)
+	selectedRoutes := make([]utils.Path, 0)
 	selectedResult := make([]utils.Amount, 0)
 	total := 0.0
 
@@ -402,7 +401,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 		}
 	}
 
-	err = m.updateWeights(selectedRoutes, selectedResult)
+	err = m.UpdateWeights(selectedRoutes, selectedResult)
 	if err != nil {
 		return len(routes), len(selectedRoutes), &PaymentError{
 			Code: UPDATE_LINK_FAILED,
@@ -412,7 +411,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 	return len(routes), len(selectedRoutes), nil
 }
 
-func (m *Mara) allocMoney(routes [][]utils.RouterID,
+func (m *Mara) allocMoney(routes []utils.Path,
 	amount utils.Amount) ([]utils.Amount, error) {
 
 	channelIndexs := make(map[string]int, 0)
@@ -448,7 +447,7 @@ func (m *Mara) allocMoney(routes [][]utils.RouterID,
 }
 
 func (m *Mara) linearProgram(
-	routes [][]utils.RouterID,
+	routes []utils.Path,
 	channelIndexs map[string]int,
 	routeMins []utils.Amount,
 	channelVals map[string]utils.Amount,
@@ -528,7 +527,7 @@ func (m *Mara) linearProgram(
 	return result, err
 }
 
-func getDAG(ordering []utils.RouterID, nodes []*Node) *DAG {
+func getDAG(ordering []utils.RouterID, nodes []*utils.Node) *utils.DAG {
 
 	mapOrdering := make(map[utils.RouterID]int, len(ordering))
 	for index, id := range ordering {
@@ -536,9 +535,9 @@ func getDAG(ordering []utils.RouterID, nodes []*Node) *DAG {
 	}
 
 	//tmpLinks := make([]*Link,0)
-	dag := NewDAG(nodes[ordering[0]], len(nodes))
-	tmpNodes := copyNodes(nodes)
-	dag.vertexs = tmpNodes
+	dag := utils.NewDAG(nodes[ordering[0]], len(nodes))
+	tmpNodes := utils.CopyNodes(nodes)
+	dag.Vertexs = tmpNodes
 
 	for i := 0; i < len(ordering); i++ {
 		for _, n := range nodes[ordering[i]].Neighbours {

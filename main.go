@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/lightningnetwork/simulator/mara"
+	"github.com/lightningnetwork/simulator/utils"
 
 	//"github.com/lightningnetwork/simulator/mara"
 	"github.com/urfave/cli"
@@ -61,7 +62,11 @@ func main() {
 				}
 				go func(idx int) {
 					wg.Add(1)
-					m, trans := mara.GetRippleMaraAndTrans("./data")
+					g := utils.GetGraph("./data")
+					m := &mara.Mara{
+						Graph:g,
+					}
+					trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
 					MaraEval(m, trans[0:tranNum], mara.MARA_MC,amountLB[idx:idx+1], pathAddLenth)
 					wg.Done()
 				}(i)
@@ -73,6 +78,8 @@ func main() {
 
 		case "sw":
 		case "dijk":
+		case "sp":
+
 		}
 
 		return nil
