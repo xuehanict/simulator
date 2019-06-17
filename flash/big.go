@@ -2,6 +2,7 @@ package flash
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	"math"
@@ -14,10 +15,12 @@ func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
 	if err != nil {
 		return false, err
 	}
+	spew.Dump(paths)
 	amts, err := f.allocMoney(amt, paths)
 	if err != nil {
 		return false, err
 	}
+	spew.Dump(amts)
 
 	if math.Abs(float64(amountSum(amts)	- amt)) > 0.0000001 {
 		return false, fmt.Errorf("allocation failed")
@@ -72,13 +75,15 @@ func (f *Flash) linearProgram (amt utils.Amount, paths []utils.Path,
 	lp.SetObjName("Z")
 	lp.SetObjDir(glpk.MIN)
 	//TODO(xuehan): modify it
-	lp.SetObjCoef(1, 1.0)
 
+	spew.Dump(f.Channels)
 	lp.AddRows(len(channelIndex) + 1)
 	for chanKey, index := range channelIndex {
+		//fmt.Printf("添加row %s, index是%v, up 是%v, lo 是%v \n", chanKey, index,
+		//	float64(f.Channels[chanKey].Part1), -float64(f.Channels[chanKey].Part2))
 		lp.SetRowName(index, chanKey)
-		lp.SetRowBnds(index, glpk.DB, - float64(f.Channels[chanKey].Part2),
-			float64(f.Channels[chanKey].Part1))
+		lp.SetRowBnds(index, glpk.DB, - float64(f.Channels[chanKey].Val2),
+			float64(f.Channels[chanKey].Val1))
 	}
 	lp.SetRowName(len(channelIndex)+1, "amount")
 	lp.SetRowBnds(len(channelIndex)+1, glpk.FX, float64(amt), float64(amt))
@@ -88,6 +93,11 @@ func (f *Flash) linearProgram (amt utils.Amount, paths []utils.Path,
 		name := fmt.Sprintf("p%d", i+1)
 		lp.SetColName(i+1, name)
 		lp.SetColBnds(i+1, glpk.LO, 0.0, 0.0)
+	}
+
+	// 费用最低
+	for j, path := range paths {
+		lp.SetObjCoef(j+1, float64(len(path)))
 	}
 	// 为了测试，构建一个矩阵，其实可以直接插入
 	matrix := make([][]float64, len(channelIndex))
@@ -99,7 +109,10 @@ func (f *Flash) linearProgram (amt utils.Amount, paths []utils.Path,
 		row = append([]float64{0}, row...)
 		matrix[index-1] = row
 	}
+
+	//spew.Dump(matrix)
 	ind := []int32{0}
+
 	for i:= range paths {
 		ind = append(ind, int32(i) + 1)
 	}
@@ -107,13 +120,12 @@ func (f *Flash) linearProgram (amt utils.Amount, paths []utils.Path,
 	for i, row := range matrix {
 		lp.SetMatRow(i+1, ind, row)
 	}
-
 	amtRow := make([]float64,len(paths) + 1)
 	for i := range amtRow {
 		amtRow[i] = 1
 	}
 	amtRow[0] = 0
-	lp.SetMatRow(len(paths)+1, ind, amtRow)
+	lp.SetMatRow(len(channelIndex)+1, ind, amtRow)
 
 	err := lp.Simplex(nil)
 	//	fmt.Printf("%s = %g", lp.ObjName(), lp.MipObjVal())

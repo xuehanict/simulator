@@ -1,6 +1,7 @@
 package flash
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/starwander/goraph"
 	"math"
@@ -43,6 +44,7 @@ func (f *Flash) getKshortestPath(from, to utils.RouterID, k int) (
 func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) (
 	bool ,error) {
 	allPaths, err := f.getKshortestPath(src,dest, k)
+	spew.Dump(allPaths)
 	if err != nil {
 		return false, err
 	}
@@ -68,6 +70,10 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 		sentList = append(sentList, sent)
 		sentPath = append(sentPath, currPath)
 
+		err := utils.UpdateWeights([]utils.Path{currPath},[]utils.Amount{sent}, f.Channels)
+		if err != nil {
+			return false, err
+		}
 		if !(amountSum(sentList) < amt &&
 			len(sentList) < len(allPaths)) {
 			break
@@ -82,22 +88,49 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 			f.addCachePath(src,dest,currPath)
 		}
 	}
-	if math.Abs(float64(amountSum(sentList) - amt)) < 0.000000001 {
-		err := f.UpdateWeights(sentPath, sentList)
+	if math.Abs(float64(amountSum(sentList) - amt)) > 0.000000001 {
+		err := f.UpdateWeightsReverse(sentPath, sentList)
 		if err != nil {
 			return false, err
 		}
+	} else {
+		return true, nil
 	}
-	return true, nil
-
+	return false, nil
 }
 
 func (f *Flash)getCachePaths(src, dest utils.RouterID) []utils.Path {
-	return nil
+	srcTable, ok := f.routingTable[src]
+	if !ok {
+		return nil
+	}
+	destPaths, ok := srcTable[dest]
+	if !ok {
+		return nil
+	}
+	return destPaths
 }
 
-func (f *Flash)addCachePath(src, dest utils.RouterID, path utils.Path)  {
+func (f *Flash)addCachePath(src, dest utils.RouterID, path utils.Path) {
+	_, ok := f.routingTable[src]
+	if !ok {
+		f.routingTable[src] = make(map[utils.RouterID][]utils.Path)
+	}
+	_, ok = f.routingTable[src][dest]
+	if !ok {
+		f.routingTable[src][dest] = make([]utils.Path,0)
+	}
 
+	exsist := false
+	for _, p := range f.routingTable[src][dest] {
+		if isSamePath(path,p) {
+			exsist = true
+			break
+		}
+	}
+	if !exsist {
+		f.routingTable[src][dest] = append(f.routingTable[src][dest], path)
+	}
 }
 
 func amountSum(a []utils.Amount) utils.Amount {
@@ -124,7 +157,6 @@ func pathSetDelete(set1, set2 []utils.Path) []utils.Path {
 	}
 	return resSet
 }
-
 
 func isSamePath(path1, path2 utils.Path) bool {
 	if len(path1) != len(path2) {

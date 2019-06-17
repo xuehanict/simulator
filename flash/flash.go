@@ -9,7 +9,7 @@ import (
 type Flash struct {
 	*utils.Graph
 	goGraph *goraph.Graph
-	routingTable map[utils.RouterID]map[utils.RouterID]utils.Path
+	routingTable map[utils.RouterID]map[utils.RouterID][]utils.Path
 	pathN int
 }
 
@@ -32,6 +32,12 @@ func (f *Flash)SendPayment(amt, thredhold utils.Amount, from, to utils.RouterID)
 	return err
 }
 
-
-
-
+func NewFlash(graph *utils.Graph,pathN int) *Flash  {
+	flash := &Flash{
+		Graph: graph,
+		routingTable: make(map[utils.RouterID]map[utils.RouterID][]utils.Path),
+		pathN: pathN,
+	}
+	flash.goGraph, _ = flash.convertGraph()
+	return flash
+}
