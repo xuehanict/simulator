@@ -482,7 +482,9 @@ func (m *Mara) linearProgram(
 	}
 
 	// 这里就任意设置一个目标函数 min： p1
-	lp.SetObjCoef(1, 1.0)
+	for j, route := range routes {
+		lp.SetObjCoef(j+1, float64(len(route)))
+	}
 	ind := []int32{0}
 	for i := range routeMins {
 		ind = append(ind, int32(i)+1)

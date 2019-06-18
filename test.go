@@ -1,21 +1,6 @@
 package main
 
-import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	sw "github.com/lightningnetwork/simulator/silentWhisper"
-	sm "github.com/lightningnetwork/simulator/speedymurmurs"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-)
-
+/*
 func testSW() {
 	var (
 		nodes = make(map[sw.RouteID]*sw.SWRouter, 0)
@@ -464,3 +449,5 @@ func testSMBigData() {
 	}
 	wg.Wait()
 }
+
+ */

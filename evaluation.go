@@ -2,23 +2,26 @@ package main
 
 import (
 	"fmt"
+	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/mara"
+	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"os"
+	"sort"
 	"time"
 )
 
 
-func initLoger() *logrus.Logger {
-	file := "logs/" + time.Now().Format("20060102030507") + ".sum" //文件名
+func initLoger(str string) *logrus.Logger {
+	file := "logs/"+ str + time.Now().Format("20060102030507") + ".sum" //文件名
 	summaryLogFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
 	}
 
-	file1 := "logs/" + time.Now().Format("20060102030507") + ".log" //文件名
+	file1 := "logs/"+ str + time.Now().Format("20060102030507") + ".log" //文件名
 	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
@@ -47,7 +50,7 @@ func initLoger() *logrus.Logger {
 func MaraEval(m *mara.Mara, trans []utils.Tran, algo int,
 	amoutLB []float64, pathAddLength []float64) {
 
-	log := initLoger()
+	log := initLoger("MARA_")
 	backupChannelBase := utils.CopyChannels(m.Channels)
 
 	for _, lb := range amoutLB {
@@ -129,3 +132,67 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int,
 		}
 	}
 }
+
+func SpiderEval(s *spider.Spider, trans []utils.Tran)  {
+	log := initLoger("SPIDER_")
+
+	totalAmt := utils.Amount(0)
+	successAmt := utils.Amount(0)
+	successNum := 0
+	totalNum := 0
+	for _, tran := range trans {
+		totalAmt += utils.Amount(tran.Val)
+		totalNum ++
+		err := s.SendPayment(utils.RouterID(tran.Src), utils.RouterID(tran.Dest),
+			utils.Amount(tran.Val))
+		if err == nil {
+			successNum ++
+			successAmt += utils.Amount(tran.Val)
+		}
+		log.WithFields(logrus.Fields{
+			"success": successNum,
+			"total":   totalNum,
+			"from": tran.Src,
+			"to": tran.Dest,
+			"amt": tran.Val,
+			"successVolume": successAmt,
+			"totalVolume": totalAmt,
+		}).Trace("execute a payment.")
+	}
+}
+
+func FlashEval(f *flash.Flash, trans []utils.Tran)  {
+
+	log := initLoger("FLASH_")
+	tranAmts := make([]float64,0)
+	for _, tran := range trans {
+		tranAmts = append(tranAmts, tran.Val)
+	}
+	sort.Float64s(tranAmts)
+	thredhold := utils.Amount(tranAmts[int(0.9 * float64(len(tranAmts)))])
+
+	totalAmt := utils.Amount(0)
+	successAmt := utils.Amount(0)
+	successNum := 0
+	totalNum := 0
+	for _, tran := range trans {
+		totalAmt += utils.Amount(tran.Val)
+		totalNum ++
+		err := f.SendPayment(utils.Amount(tran.Val), thredhold,
+			utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
+		if err == nil {
+			successNum ++
+			successAmt += utils.Amount(tran.Val)
+		}
+		log.WithFields(logrus.Fields{
+			"success": successNum,
+			"total":   totalNum,
+			"from": tran.Src,
+			"to": tran.Dest,
+			"amt": tran.Val,
+			"successVolume": successAmt,
+			"totalVolume": totalAmt,
+		}).Trace("execute a payment.")
+	}
+}
+

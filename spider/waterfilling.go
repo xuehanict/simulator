@@ -31,7 +31,7 @@ func (s *Spider) waterFilling (amt utils.Amount, caps []utils.Amount,
 			amtAssign = remainder / utils.Amount(len(caps))
 		}
 
-		for index := range maxSet {
+		for _, index := range maxSet {
 			res[index] += amtAssign
 			caps[index] -= amtAssign
 		}
@@ -62,7 +62,7 @@ func clearEdge(nodes []*utils.Node, path utils.Path) []*utils.Node {
 		nodes[path[i]].RemoveNei(nodes[path[i+1]].ID)
 		nodes[path[i+1]].RemoveNei(nodes[path[i]].ID)
 	}
-	return nil
+	return nodes
 }
 
 func getGap (caps []utils.Amount) (utils.Amount, []int, []int){

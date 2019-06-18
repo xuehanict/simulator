@@ -2,8 +2,8 @@ package spider
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
-	"math"
 )
 
 const (
@@ -20,28 +20,22 @@ type Spider struct {
 
 
 func (s *Spider) SendPayment (src, dest utils.RouterID,
-	amt utils.Amount, algo int) error {
-	switch algo {
+	amt utils.Amount) error {
+	switch s.algo {
 	case WATERFIILING:
 		paths := s.getPaths(src,dest, s.pathNum)
-		routeMins := make([]utils.Amount, 0)
+		//spew.Dump(paths)
+		routeMins := make([]utils.Amount, len(paths))
 		// 计算出每条路径的最小值，并且获取每条通道的容量
 		for j, path := range paths {
-			min := utils.Amount(math.MaxFloat64)
-			for i := 0; i < len(path)-1; i++ {
-				val := utils.GetLinkValue(path[i], path[i+1], s.Channels)
-				if val < min {
-					min = val
-				}
-			}
-			routeMins[j] = min
+			routeMins[j] = utils.GetPathCap(path, s.Channels)
 		}
 
 		distri, err := s.waterFilling(amt, routeMins)
 		if err != nil {
 			return fmt.Errorf("insufficient")
 		}
-		
+		spew.Dump(distri)
 		err = s.UpdateWeights(paths, distri)
 		if err != nil {
 			return err

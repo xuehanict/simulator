@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/mara"
+	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
 
 	//"github.com/lightningnetwork/simulator/mara"
@@ -34,7 +36,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "mara",
+			Value: "flash",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -79,7 +81,16 @@ func main() {
 		case "sw":
 		case "dijk":
 		case "sp":
+			g := utils.GetGraph("./data")
+			s := spider.NewSpider(g, spider.WATERFIILING, 4)
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			SpiderEval(s, trans[0:tranNum])
 
+		case "flash":
+			g := utils.GetGraph("./data")
+			f := flash.NewFlash(g, 20)
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			FlashEval(f, trans[0:tranNum])
 		}
 
 		return nil
