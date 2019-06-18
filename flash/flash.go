@@ -4,6 +4,7 @@ import (
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/starwander/goraph"
 	"sort"
+	"sync"
 )
 
 type Flash struct {
@@ -11,6 +12,10 @@ type Flash struct {
 	goGraph *goraph.Graph
 	routingTable map[utils.RouterID]map[utils.RouterID][]utils.Path
 	pathN int
+
+	testTable map[utils.RouterID]map[utils.RouterID][]utils.Path
+	test bool
+	rw sync.RWMutex
 }
 
 func getThreshold(trans []utils.Tran, percent float64) float64 {
@@ -22,21 +27,25 @@ func getThreshold(trans []utils.Tran, percent float64) float64 {
 	return amts[int((percent)*float64(len(trans)))]
 }
 
-func (f *Flash)SendPayment(amt, thredhold utils.Amount, from, to utils.RouterID) error {
+func (f *Flash)SendPayment(amt, thredhold utils.Amount, from, to utils.RouterID) (bool, error) {
 	var err error
+	var res bool
 	if amt > thredhold {
-		_, err = f.elephantRouting(amt, from,to)
+		res, err = f.elephantRouting(amt, from,to)
 	} else {
-		_, err = f.microRouting(from, to, amt, 4)
+		res, err = f.microRouting(from, to, amt, 4)
 	}
-	return err
+	return res, err
 }
 
-func NewFlash(graph *utils.Graph,pathN int) *Flash  {
+func NewFlash(graph *utils.Graph,pathN int, test bool) *Flash  {
 	flash := &Flash{
 		Graph: graph,
 		routingTable: make(map[utils.RouterID]map[utils.RouterID][]utils.Path),
+		testTable: make(map[utils.RouterID]map[utils.RouterID][]utils.Path),
 		pathN: pathN,
+		test: test,
+		rw : sync.RWMutex{},
 	}
 	flash.goGraph, _ = flash.convertGraph()
 	return flash

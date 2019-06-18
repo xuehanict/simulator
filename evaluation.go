@@ -175,12 +175,13 @@ func FlashEval(f *flash.Flash, trans []utils.Tran)  {
 	successAmt := utils.Amount(0)
 	successNum := 0
 	totalNum := 0
+
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum ++
-		err := f.SendPayment(utils.Amount(tran.Val), thredhold,
+		res, err := f.SendPayment(utils.Amount(tran.Val), thredhold,
 			utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
-		if err == nil {
+		if res && err != nil {
 			successNum ++
 			successAmt += utils.Amount(tran.Val)
 		}

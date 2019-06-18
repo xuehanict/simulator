@@ -1,6 +1,7 @@
 package flash
 
 import (
+	"fmt"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/starwander/goraph"
 	"math"
@@ -42,11 +43,20 @@ func (f *Flash) getKshortestPath(from, to utils.RouterID, k int) (
 
 func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) (
 	bool ,error) {
-	allPaths, err := f.getKshortestPath(src,dest, k)
-	//spew.Dump(allPaths)
-	if err != nil {
-		return false, err
+	var allPaths []utils.Path
+	if f.test == false {
+		allPaths, err := f.getKshortestPath(src,dest, k)
+		if err != nil || allPaths == nil {
+			return false, err
+		}
+	} else {
+		allPaths = f.GetShortestPathsForTest(src,dest)
 	}
+	if allPaths == nil || len(allPaths) < 1 {
+		return false, fmt.Errorf("no path")
+	}
+	//spew.Dump(allPaths)
+
 	pathSets := f.getCachePaths(src,dest)
 
 	if pathSets == nil {
@@ -168,4 +178,22 @@ func isSamePath(path1, path2 utils.Path) bool {
 		}
 	}
 	return true
+}
+
+func (f *Flash)AddShortestPathsTest(src, dest utils.RouterID)  {
+	_, ok := f.routingTable[src]
+	if !ok {
+		f.routingTable[src] = make(map[utils.RouterID][]utils.Path)
+	}
+	_, ok = f.routingTable[src][dest]
+	if !ok {
+		paths, _ := f.getKshortestPath(src, dest, 4)
+		f.rw.Lock()
+		f.routingTable[src][dest] = paths
+		f.rw.Unlock()
+	}
+}
+
+func (f *Flash)GetShortestPathsForTest(src, dest utils.RouterID) []utils.Path {
+	return f.routingTable[src][dest]
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/mara"
 	"github.com/lightningnetwork/simulator/spider"
@@ -87,10 +88,29 @@ func main() {
 			SpiderEval(s, trans[0:tranNum])
 
 		case "flash":
-			g := utils.GetGraph("./data")
-			f := flash.NewFlash(g, 20)
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
-			FlashEval(f, trans[0:tranNum])
+			trans = trans[0:tranNum]
+			g := utils.GetGraph("./data")
+			f := flash.NewFlash(g, 20, true)
+
+			wg := sync.WaitGroup{}
+			calcuN := 0
+			for i:= 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * 100)
+				go func( idx int) {
+					wg.Add(1)
+					tmpTrans := trans[idx*tranNum/10:(idx+1)*tranNum/10]
+					for _, tran := range tmpTrans {
+						f.AddShortestPathsTest(utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
+						fmt.Printf("算完一个交易路径:%v \n", calcuN)
+						calcuN ++
+					}
+					wg.Done()
+				}(i)
+			}
+			wg.Wait()
+			fmt.Printf("算完所有路径\n")
+			FlashEval(f, trans)
 		}
 
 		return nil
