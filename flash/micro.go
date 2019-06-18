@@ -97,7 +97,7 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 			f.addCachePath(src,dest,currPath)
 		}
 	}
-	if math.Abs(float64(amountSum(sentList) - amt)) > 0.000000001 {
+	if math.Abs(float64(amountSum(sentList) - amt)) > 0.0000001 {
 		err := f.UpdateWeightsReverse(sentPath, sentList)
 		if err != nil {
 			return false, err
