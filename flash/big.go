@@ -2,7 +2,6 @@ package flash
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/lukpank/go-glpk/glpk"
 	"math"
@@ -15,12 +14,12 @@ func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
 	if err != nil {
 		return false, err
 	}
-	spew.Dump(paths)
+	//spew.Dump(paths)
 	amts, err := f.allocMoney(amt, paths)
 	if err != nil {
 		return false, err
 	}
-	spew.Dump(amts)
+	//spew.Dump(amts)
 
 	if math.Abs(float64(amountSum(amts)	- amt)) > 0.0000001 {
 		return false, fmt.Errorf("allocation failed")
@@ -76,7 +75,7 @@ func (f *Flash) linearProgram (amt utils.Amount, paths []utils.Path,
 	lp.SetObjDir(glpk.MIN)
 	//TODO(xuehan): modify it
 
-	spew.Dump(f.Channels)
+	//spew.Dump(f.Channels)
 	lp.AddRows(len(channelIndex) + 1)
 	for chanKey, index := range channelIndex {
 		//fmt.Printf("添加row %s, index是%v, up 是%v, lo 是%v \n", chanKey, index,

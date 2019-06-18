@@ -1,7 +1,6 @@
 package flash
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/starwander/goraph"
 	"math"
@@ -44,7 +43,7 @@ func (f *Flash) getKshortestPath(from, to utils.RouterID, k int) (
 func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) (
 	bool ,error) {
 	allPaths, err := f.getKshortestPath(src,dest, k)
-	spew.Dump(allPaths)
+	//spew.Dump(allPaths)
 	if err != nil {
 		return false, err
 	}
