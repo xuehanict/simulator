@@ -12,8 +12,8 @@ func TestFlash_SendPayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("faced error:%v", err)
 	}
-	f := NewFlash(graph, 4)
-	err = f.SendPayment(40, 50, 1, 4)
+	f := NewFlash(graph, 4, false)
+	_, err = f.SendPayment(40, 50, 1, 4)
 	if err != nil {
 		t.Fatalf("faced error :%v", err)
 	}
