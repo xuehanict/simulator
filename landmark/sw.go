@@ -6,14 +6,13 @@ import (
 )
 
 type SW struct {
-	LandMarkRouting
+	*LandMarkRouting
 }
 
 const (
 	UP  = true
 	DOWN = false
 )
-
 
 func (s *SW) getPaths (src, dest utils.RouterID) []utils.Path {
 	paths := make([]utils.Path, 0)
@@ -84,13 +83,16 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 	bool, error) {
 
 	paths := s.getPaths(src, dest)
-	caps := make([]utils.Amount, len(paths))
+//	spew.Dump(paths)
+	caps := make([]utils.Amount, 0)
 	for _, path := range paths {
 		cap := utils.GetPathCap(path, s.Channels)
 		caps = append(caps, cap)
 	}
 
 	allcs := minPart(amt,caps)
+//	spew.Printf("caps%v\n", caps)
+//	spew.Dump(allcs)
 	if allcs == nil {
 		return false, nil
 	}
@@ -99,7 +101,7 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 	sentPaths := make([]utils.Path, 0)
 	for i, path := range paths {
 		if utils.GetPathCap(path, s.Channels) >= allcs[i] {
-			err := s.UpdateWeights(paths[i:i+1], allcs[i:i+1])
+			err := s.UpdateWeight(paths[i], allcs[i])
 			if err != nil {
 				return false, err
 			}
@@ -108,7 +110,7 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 		} else {
 			// 回滚
 			for j := range sentPaths {
-				err := s.UpdateWeightsReverse(sentPaths[j:j+1], sentList[j:j+1])
+				err := s.UpdateWeightReverse(sentPaths[j], sentList[j])
 				if err != nil {
 					return false, err
 				}
@@ -150,5 +152,20 @@ func getCPL(addr1, addr2 string, interval int) int {
 		addr2Bytes = addr2Bytes[interval:]
 	}
 	return cpl
+}
+
+func NewSw(g *utils.Graph, roots []utils.RouterID) *SW {
+	sw := &SW{
+		LandMarkRouting: &LandMarkRouting{
+			Graph: g,
+			Coordination:make(map[utils.RouterID]map[utils.RouterID]*Addr),
+			Roots: roots,
+		},
+	}
+	for _,n := range sw.Nodes {
+		sw.Coordination[n.ID] = make(map[utils.RouterID]*Addr)
+	}
+	sw.SetCoordinations()
+	return sw
 }
 
