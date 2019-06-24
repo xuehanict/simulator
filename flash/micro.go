@@ -45,10 +45,11 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 	bool ,error) {
 	var allPaths []utils.Path
 	if f.test == false {
-		allPaths, err := f.getKshortestPath(src,dest, k)
+		tmpAllPaths, err := f.getKshortestPath(src,dest, k)
 		if err != nil || allPaths == nil {
 			return false, err
 		}
+		allPaths = tmpAllPaths
 	} else {
 		allPaths = f.GetShortestPathsForTest(src,dest)
 	}

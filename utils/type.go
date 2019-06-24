@@ -11,3 +11,12 @@ func CopyPath (path Path) Path {
 	}
 	return res
 }
+
+func CheckInPath (id RouterID, path Path)  bool {
+	for _, n := range path {
+		if n == id {
+			return true
+		}
+	}
+	return false
+}

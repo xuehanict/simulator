@@ -1,7 +1,8 @@
 package utils
 
 type Metrics struct {
-	ProbeMessgeNum int
+	ProbeMessgeNum int64
+	OperationNum int64
 	MaxPathLengh int
 	Fees Amount
 }

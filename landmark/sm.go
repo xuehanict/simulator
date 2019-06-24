@@ -3,7 +3,6 @@ package landmark
 import (
 	"bytes"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"math"
 )
@@ -90,7 +89,7 @@ func (s *SM) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 	if len(paths) == 0 {
 		return false, fmt.Errorf("no path found")
 	}
-	spew.Dump(s.Channels)
+//	spew.Dump(s.Channels)
 	// 因为在探路过程中已经减去了过去的部分钱，所以先加回来，再支付
 	for i, path := range paths {
 		err := s.UpdateWeighOneDir(path, splittedAmounts[i], utils.ADD)

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/lightningnetwork/simulator/flash"
+	"github.com/lightningnetwork/simulator/landmark"
 	"github.com/lightningnetwork/simulator/mara"
 	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
@@ -37,7 +38,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "flash",
+			Value: "mara",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -78,9 +79,19 @@ func main() {
 			wg.Wait()
 
 		case "sm":
+			g := utils.GetGraph("./data")
+			s := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			SMEval(s, trans[0:tranNum])
 
 		case "sw":
+			g := utils.GetGraph("./data")
+			s := landmark.NewSw(g, []utils.RouterID{5, 38, 13})
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			SWEval(s, trans[0:tranNum])
 		case "dijk":
+
+
 		case "sp":
 			g := utils.GetGraph("./data")
 			s := spider.NewSpider(g, spider.WATERFIILING, 4)

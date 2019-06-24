@@ -22,6 +22,10 @@ func (s *SW) getPaths (src, dest utils.RouterID) []utils.Path {
 		curr := src
 		path[0] = src
 		dir := UP
+		if src == root {
+			dir = DOWN
+		}
+
 		for {
 			next := s.getNextHop(destAddr, root, curr, dir)
 			path = append(path, next)

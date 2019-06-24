@@ -113,7 +113,6 @@ func UpdateWeights(routes []Path, amts []Amount,
 	if len(routes) != len(amts) {
 		return fmt.Errorf("routes number is not equal to amts' ")
 	}
-
 	for idx, route := range routes {
 		for i := 0; i < len(route)-1; i++ {
 			// i 到 i+1 的钱减少

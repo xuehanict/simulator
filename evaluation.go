@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/lightningnetwork/simulator/flash"
+	"github.com/lightningnetwork/simulator/landmark"
 	"github.com/lightningnetwork/simulator/mara"
 	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
@@ -196,4 +197,71 @@ func FlashEval(f *flash.Flash, trans []utils.Tran)  {
 		}).Trace("execute a payment.")
 	}
 }
+
+func SWEval(s *landmark.SW, trans []utils.Tran)  {
+	log := initLoger("SW_")
+	tranAmts := make([]float64,0)
+	for _, tran := range trans {
+		tranAmts = append(tranAmts, tran.Val)
+	}
+
+	totalAmt := utils.Amount(0)
+	successAmt := utils.Amount(0)
+	successNum := 0
+	totalNum := 0
+
+	for _, tran := range trans {
+		totalAmt += utils.Amount(tran.Val)
+		totalNum ++
+		res, err := s.SendPayment(utils.RouterID(tran.Src),
+			utils.RouterID(tran.Dest),utils.Amount(tran.Val), )
+		if res && err == nil {
+			successNum ++
+			successAmt += utils.Amount(tran.Val)
+		}
+		log.WithFields(logrus.Fields{
+			"success": successNum,
+			"total":   totalNum,
+			"from": tran.Src,
+			"to": tran.Dest,
+			"amt": tran.Val,
+			"successVolume": successAmt,
+			"totalVolume": totalAmt,
+		}).Trace("execute a payment.")
+	}
+}
+
+func SMEval(s *landmark.SM, trans []utils.Tran)  {
+	log := initLoger("SM_")
+	tranAmts := make([]float64,0)
+	for _, tran := range trans {
+		tranAmts = append(tranAmts, tran.Val)
+	}
+
+	totalAmt := utils.Amount(0)
+	successAmt := utils.Amount(0)
+	successNum := 0
+	totalNum := 0
+
+	for _, tran := range trans {
+		totalAmt += utils.Amount(tran.Val)
+		totalNum ++
+		res, err := s.SendPayment(utils.RouterID(tran.Src),
+			utils.RouterID(tran.Dest),utils.Amount(tran.Val), )
+		if res && err == nil {
+			successNum ++
+			successAmt += utils.Amount(tran.Val)
+		}
+		log.WithFields(logrus.Fields{
+			"success": successNum,
+			"total":   totalNum,
+			"from": tran.Src,
+			"to": tran.Dest,
+			"amt": tran.Val,
+			"successVolume": successAmt,
+			"totalVolume": totalAmt,
+		}).Trace("execute a payment.")
+	}
+}
+
 

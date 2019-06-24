@@ -22,6 +22,7 @@ const (
 	MAX_ADJACENT       = 100000
 	MARA_MC			   = 0
 	MARA_SPE		   = 1
+	MARA_SPT		   = 2
 	SELECT_BOUND	   = 20
 )
 
@@ -84,9 +85,7 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *utils.DAG {
 	nodes := m.Nodes
 
 	if _, ok := m.SPTs[startID]; !ok {
-		fmt.Printf("算最短路\n")
 		m.SPTs[startID], m.Distance[startID] = utils.Dijkstra(m.Nodes, startID)
-		fmt.Printf("算完最短路\n")
 	}
 	ordering := make([]utils.RouterID, 1)
 	ordering[0] = startID
@@ -264,11 +263,15 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
 			m.DAGs[dest] = m.MaraMcOPT(dest)
 		case MARA_SPE:
 			m.DAGs[dest] = m.MaraSpeOpt(dest)
+		case MARA_SPT:
+			m.DAGs[dest],_ = utils.Dijkstra(m.Nodes, dest)
 		}
 	}
-	fmt.Printf("DAG构架能完成\n")
+	finalLen := maxLenth + m.Distance[dest][src]
+	//fmt.Printf("DAG构架能完成\n")
+	fmt.Printf("maxLength:%v\n", finalLen)
 	return m.nextHop(nil, src, dest, amount,
-		maxLenth, amtRate)
+		finalLen, amtRate)
 }
 
 type parentSorter struct {
@@ -359,7 +362,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 		return 0, 0, nil
 	}	
 	routes := m.getRoutesWithBond(src, dest, algo,amount,
-		m.Distance[dest][src] + addLenth, amtRate)
+		addLenth, amtRate)
 	if len(routes) == 0 {
 		return 0, 0, &PaymentError{
 			Code:FIND_PATH_FAILED,

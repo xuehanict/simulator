@@ -18,3 +18,12 @@ func TestSW_SendPayment(t *testing.T) {
 		t.Fatalf("faced error :%v", err)
 	}
 }
+
+func TestSW_Ripple(t *testing.T)  {
+	g := utils.GetGraph("../data")
+	s := NewSw(g, []utils.RouterID{5, 38, 13})
+	_, err := s.SendPayment(38, 12805, 108484.5)
+	if err != nil {
+		t.Fatalf("faced error :%v", err)
+	}
+}

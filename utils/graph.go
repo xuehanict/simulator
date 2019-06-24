@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+const (
+	ADD = true
+	SUB = false
+)
+
+
 /*
 type Link struct {
 	From utils.RouterID
@@ -106,6 +112,7 @@ func (n *Node) RemoveNei(id RouterID) {
 	n.Neighbours = newNeis
 }
 
+// 支付多条路径
 func (g *Graph) UpdateWeights(routes []Path,
 	amts []Amount) error {
 
@@ -117,13 +124,13 @@ func (g *Graph) UpdateWeights(routes []Path,
 		for i := 0; i < len(route)-1; i++ {
 			// i 到 i+1 的钱减少
 			err := UpdateLinkValue(route[i], route[i+1],
-				g.Channels, amts[idx], false)
+				g.Channels, amts[idx], SUB)
 			if err != nil {
 				return err
 			}
 			// i+1 到 i 的钱增加
 			err = UpdateLinkValue(route[i+1], route[i],
-				g.Channels, amts[idx], true)
+				g.Channels, amts[idx], ADD)
 			if err != nil {
 				return err
 			}
@@ -132,6 +139,59 @@ func (g *Graph) UpdateWeights(routes []Path,
 	return nil
 }
 
+
+// 支付一条路径，i -> i+1 的钱减少， i+1 -> i的钱增加
+func (g *Graph)UpdateWeight(route Path, amt Amount) error {
+	for i := 0; i < len(route)-1; i++ {
+		// i 到 i+1 的钱减少
+		err := UpdateLinkValue(route[i], route[i+1],
+			g.Channels, amt, SUB)
+		if err != nil {
+			return err
+		}
+		// i+1 到 i 的钱增加
+		err = UpdateLinkValue(route[i+1], route[i],
+			g.Channels, amt, ADD)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 支付一条路径，i -> i+1 的钱增加， i+1 -> i的钱减少
+func (g *Graph)UpdateWeightReverse(route Path, amt Amount) error {
+	for i := 0; i < len(route)-1; i++ {
+		// i 到 i+1 的钱减少
+		err := UpdateLinkValue(route[i], route[i+1],
+			g.Channels, amt, ADD)
+		if err != nil {
+			return err
+		}
+		// i+1 到 i 的钱增加
+		err = UpdateLinkValue(route[i+1], route[i],
+			g.Channels, amt, SUB)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 更新一条路，但是只是单方面只增加或只减少，面向的是预支付场景
+func (g *Graph)UpdateWeighOneDir(route Path, amt Amount, addOrSub bool) error {
+	for i := 0; i < len(route)-1; i++ {
+		// i 到 i+1 的钱减少
+		err := UpdateLinkValue(route[i], route[i+1],
+			g.Channels, amt, addOrSub)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 反方向回滚支付
 func (g *Graph) UpdateWeightsReverse(routes []Path,
 	amts []Amount) error {
 
@@ -141,15 +201,15 @@ func (g *Graph) UpdateWeightsReverse(routes []Path,
 
 	for idx, route := range routes {
 		for i := 0; i < len(route)-1; i++ {
-			// i 到 i+1 的钱减少
+			// 从i到i+1的钱增加
 			err := UpdateLinkValue(route[i], route[i+1],
-				g.Channels, amts[idx], true)
+				g.Channels, amts[idx], ADD)
 			if err != nil {
 				return err
 			}
-			// i+1 到 i 的钱增加
+			// i+1 到 i 的钱减少
 			err = UpdateLinkValue(route[i+1], route[i],
-				g.Channels, amts[idx], false)
+				g.Channels, amts[idx], SUB)
 			if err != nil {
 				return err
 			}
@@ -229,4 +289,10 @@ func GetGraph(data string) *Graph {
 		Distance: make(map[RouterID]map[RouterID]float64),
 	}
 	return graph
+}
+
+func (g *Graph)UpdateLinkValue(from, to RouterID, amt Amount,
+	addOrSub bool) error {
+	err := UpdateLinkValue(from,to, g.Channels, amt, addOrSub)
+	return err
 }
