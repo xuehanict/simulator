@@ -492,7 +492,6 @@ func (m *Mara) linearProgram(
 		lp.SetColBnds(i+1, glpk.DB, 0.0, float64(min))
 	}
 
-	// 这里就任意设置一个目标函数 min： p1
 	for j, route := range routes {
 		lp.SetObjCoef(j+1, float64(len(route)))
 	}

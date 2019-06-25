@@ -53,7 +53,7 @@ func main() {
 		tranNum := c.Int("trans_num")
 		switch algo {
 		case "mara":
-			amountLB := []float64{0.1}
+			amountLB := []float64{0.05}
 			pathAddLenth := []float64{4}
 
 			wg := sync.WaitGroup{}
@@ -70,7 +70,7 @@ func main() {
 					m := &mara.Mara{
 						Graph:g,
 					}
-					trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+					trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 					MaraEval(m, trans[0:tranNum], mara.MARA_MC,amountLB[idx:idx+1], pathAddLenth)
 					wg.Done()
 				}(i)
