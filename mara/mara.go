@@ -23,7 +23,7 @@ const (
 	MARA_MC			   = 0
 	MARA_SPE		   = 1
 	MARA_SPT		   = 2
-	SELECT_BOUND	   = 20
+	SELECT_BOUND	   = 100
 )
 
 type capElement struct {
@@ -417,6 +417,14 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 func (m *Mara) allocMoney(routes []utils.Path,
 	amount utils.Amount) ([]utils.Amount, error) {
 
+	if len(routes) == 1 {
+		cap := utils.GetPathCap(routes[0],m.Channels)
+		if cap < amount {
+			return nil, fmt.Errorf("no enough money")
+		} else {
+			return []utils.Amount{amount}, nil
+		}
+	}
 	channelIndexs := make(map[string]int, 0)
 	routeMins := make([]utils.Amount, len(routes))
 	channelVals := make(map[string]utils.Amount)
