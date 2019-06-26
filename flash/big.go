@@ -8,37 +8,47 @@ import (
 )
 
 func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
-	bool, error) {
-
+	*utils.Metrics, error) {
+	metiric := &utils.Metrics{0,0,0,0}
 	paths, _, err := f.findPaths(from, to)
 	if err != nil {
-		return false, err
+		return metiric, fmt.Errorf("routing failed :%s", err.Error())
 	}
 	//spew.Dump(paths)
 	amts, err := f.allocMoney(amt, paths)
 	if err != nil {
-		return false, err
+		return metiric, err
 	}
 	//spew.Dump(amts)
 
 	if math.Abs(float64(amountSum(amts)	- amt)) > 0.0000001 {
-		return false, fmt.Errorf("allocation failed")
+		return metiric, fmt.Errorf("allocation failed")
 	}
 
 	err = f.UpdateWeights(paths, amts)
-	if err != nil {
-		return false, err
+	for i, path := range paths {
+		if amts[i] != 0 {
+			metiric.OperationNum += int64(len(path)-1)
+			if len(path) > metiric.MaxPathLengh {
+				metiric.MaxPathLengh = len(path)
+			}
+			metiric.Fees += amts[i]*utils.Amount(len(path)-1)*utils.FEERATE
+		}
 	}
-	return true, nil
+	if err != nil {
+		return metiric, err
+	}
+	return metiric, nil
 }
 
 func (f *Flash)findPaths(src, dest utils.RouterID)(
 	[]utils.Path, []utils.Amount, error) {
-
+	metric := utils.Metrics{0,0,0,0}
 	localChannel := utils.CopyChannels(f.Channels)
 	pathSet := make([]utils.Path, 0)
 	capSet := make([]utils.Amount,0)
 	path := utils.BfsPath(f.Nodes, src, dest, true, localChannel)
+	metric.ProbeMessgeNum += int64(len(path)-1)
 
 	for i := 0; i < f.pathN && path != nil; i++ {
 		pathSet = append(pathSet, path)
@@ -50,6 +60,7 @@ func (f *Flash)findPaths(src, dest utils.RouterID)(
 			return nil, nil, err
 		}
 		path = utils.BfsPath(f.Nodes, src, dest, true, localChannel)
+		metric.ProbeMessgeNum += int64(len(path)-1)
 	}
 
 	return pathSet, capSet, nil

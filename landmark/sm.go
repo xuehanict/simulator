@@ -7,20 +7,21 @@ import (
 	"math"
 )
 
+
+// TODO(xuehan): 实现对channel数值变化的响应函数
 type SM struct {
 	*LandMarkRouting
 }
 
-
-func (s *SM) getPaths (src, dest utils.RouterID, amts []utils.Amount) (
-	[]utils.Path, error) {
-
+func (s *SM) getPaths (src, dest utils.RouterID, amts []utils.Amount,
+	metric *utils.Metrics) ([]utils.Path, error) {
 	paths := make([]utils.Path, 0)
 	for i, root := range s.Roots {
 		path := utils.Path{src}
 		curr := src
 		for {
-			next := s.getNextHop(curr, root, dest, path, amts[i] )
+			metric.ProbeMessgeNum += 1
+			next := s.getNextHop(curr, root, dest, path, amts[i])
 			// 没找到路需要回滚
 			if next == -1  {
 				err := s.UpdateWeighOneDir(path, amts[i], utils.ADD)
@@ -80,29 +81,36 @@ func getDis(neighbour, dest string, lenthInterval int) int {
 }
 
 func (s *SM) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
-	bool, error) {
+	*utils.Metrics, error) {
+
+	metric := &utils.Metrics{0,0,0,0}
 	splittedAmounts := randomPartition(amt, len(s.Roots))
-	paths,err := s.getPaths(src,dest, splittedAmounts)
+	paths,err := s.getPaths(src,dest, splittedAmounts, metric)
 	if err != nil {
-		return false, err
+		return metric, err
 	}
 	if len(paths) == 0 {
-		return false, fmt.Errorf("no path found")
+		return metric, fmt.Errorf("no path found")
 	}
 //	spew.Dump(s.Channels)
 	// 因为在探路过程中已经减去了过去的部分钱，所以先加回来，再支付
 	for i, path := range paths {
+		if len(path) > metric.MaxPathLengh {
+			metric.MaxPathLengh = len(path)
+		}
 		err := s.UpdateWeighOneDir(path, splittedAmounts[i], utils.ADD)
 		if err != nil {
-			return false, fmt.Errorf("探路完后失败")
+			return metric, fmt.Errorf("探路完后失败")
 		}
 		// 这里才是真正支付
 		err = s.UpdateWeight(path, splittedAmounts[i])
+		metric.OperationNum += int64(len(path)-1)
+		metric.Fees += splittedAmounts[i]*utils.FEERATE *utils.Amount(len(path) -1)
 		if err != nil {
-			return false, fmt.Errorf("探路完支付失败")
+			return metric, fmt.Errorf("探路完支付失败")
 		}
 	}
-	return true, nil
+	return metric, nil
 }
 
 func NewSM(g *utils.Graph, roots []utils.RouterID) *SM  {

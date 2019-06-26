@@ -27,15 +27,16 @@ func getThreshold(trans []utils.Tran, percent float64) float64 {
 	return amts[int((percent)*float64(len(trans)))]
 }
 
-func (f *Flash)SendPayment(amt, thredhold utils.Amount, from, to utils.RouterID) (bool, error) {
+func (f *Flash)SendPayment(amt, thredhold utils.Amount, from, to utils.RouterID) (
+	*utils.Metrics, error) {
 	var err error
-	var res bool
+	var metric *utils.Metrics
 	if amt > thredhold {
-		res, err = f.elephantRouting(amt, from,to)
+		metric, err = f.elephantRouting(amt, from,to)
 	} else {
-		res, err = f.microRouting(from, to, amt, 4)
+		metric, err = f.microRouting(from, to, amt, 4)
 	}
-	return res, err
+	return metric, err
 }
 
 func NewFlash(graph *utils.Graph,pathN int, test bool) *Flash  {

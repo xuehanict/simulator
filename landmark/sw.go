@@ -2,6 +2,7 @@ package landmark
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/lightningnetwork/simulator/utils"
 )
 
@@ -14,7 +15,8 @@ const (
 	DOWN = false
 )
 
-func (s *SW) getPaths (src, dest utils.RouterID) []utils.Path {
+func (s *SW) getPaths (src, dest utils.RouterID, metric *utils.Metrics,
+	) []utils.Path {
 	paths := make([]utils.Path, 0)
 	for _, root := range s.Roots {
 		destAddr := s.Coordination[dest][root].coordinate
@@ -27,6 +29,7 @@ func (s *SW) getPaths (src, dest utils.RouterID) []utils.Path {
 		}
 
 		for {
+			metric.ProbeMessgeNum++
 			next := s.getNextHop(destAddr, root, curr, dir)
 			path = append(path, next)
 			curr = next
@@ -84,9 +87,9 @@ func minPart(amount utils.Amount, mins []utils.Amount) []utils.Amount {
 }
 
 func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
-	bool, error) {
-
-	paths := s.getPaths(src, dest)
+	*utils.Metrics, error) {
+	metric := &utils.Metrics{0,0,0,0}
+	paths := s.getPaths(src, dest, metric)
 //	spew.Dump(paths)
 	caps := make([]utils.Amount, 0)
 	for _, path := range paths {
@@ -95,10 +98,8 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 	}
 
 	allcs := minPart(amt,caps)
-//	spew.Printf("caps%v\n", caps)
-//	spew.Dump(allcs)
 	if allcs == nil {
-		return false, nil
+		return metric, fmt.Errorf("capacity not insufficient")
 	}
 
 	sentList := make([]utils.Amount, 0)
@@ -107,22 +108,28 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 		if utils.GetPathCap(path, s.Channels) >= allcs[i] {
 			err := s.UpdateWeight(paths[i], allcs[i])
 			if err != nil {
-				return false, err
+				return metric, err
 			}
 			sentList = append(sentList, allcs[i])
 			sentPaths = append(sentPaths, path)
+
 		} else {
 			// 回滚
 			for j := range sentPaths {
 				err := s.UpdateWeightReverse(sentPaths[j], sentList[j])
 				if err != nil {
-					return false, err
+					return metric, err
 				}
 			}
-			return false, nil
+			return metric, nil
+		}
+		metric.Fees += utils.Amount(len(path)-1)*utils.FEERATE*allcs[i]
+		metric.OperationNum += int64(len(path)-1)
+		if len(path) > metric.MaxPathLengh {
+			metric.MaxPathLengh = len(path)
 		}
 	}
-	return true, nil
+	return metric, nil
 }
 
 func (s *SW) getNextHop(dest string, root, current utils.RouterID,

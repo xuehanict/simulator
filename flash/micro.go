@@ -33,6 +33,9 @@ func (f *Flash) getKshortestPath(from, to utils.RouterID, k int) (
 	res := make([]utils.Path, 0)
 	for _, path := range paths {
 		p := make([]utils.RouterID, 0)
+		if len(path) == 0 {
+			continue
+		}
 		for _, id := range path {
 			p = append(p, id.(utils.RouterID))
 		}
@@ -42,19 +45,21 @@ func (f *Flash) getKshortestPath(from, to utils.RouterID, k int) (
 }
 
 func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) (
-	bool ,error) {
+	*utils.Metrics, error) {
+
+	metric := &utils.Metrics{0,0,0,0}
 	var allPaths []utils.Path
 	if f.test == false {
 		tmpAllPaths, err := f.getKshortestPath(src,dest, k)
-		if err != nil || allPaths == nil {
-			return false, err
+		if err != nil {
+			return metric, err
 		}
 		allPaths = tmpAllPaths
 	} else {
 		allPaths = f.GetShortestPathsForTest(src,dest)
 	}
 	if allPaths == nil || len(allPaths) < 1 {
-		return false, fmt.Errorf("no path")
+		return metric, fmt.Errorf("no path")
 	}
 	//spew.Dump(allPaths)
 
@@ -70,6 +75,7 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 	currPath := pathSets[0]
 	for {
 		pathCap := utils.GetPathCap(currPath, f.Channels)
+		metric.ProbeMessgeNum += int64(len(currPath)-1)
 		remaining := amt - amountSum(sentList)
 		sent := utils.Amount(0)
 		if pathCap > remaining {
@@ -79,10 +85,10 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 		}
 		sentList = append(sentList, sent)
 		sentPath = append(sentPath, currPath)
-
 		err := utils.UpdateWeights([]utils.Path{currPath},[]utils.Amount{sent}, f.Channels)
+		metric.OperationNum += int64(len(currPath)-1)
 		if err != nil {
-			return false, err
+			return metric, err
 		}
 		if !(amountSum(sentList) < amt &&
 			len(sentList) < len(allPaths)) {
@@ -100,13 +106,22 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 	}
 	if math.Abs(float64(amountSum(sentList) - amt)) > 0.0000001 {
 		err := f.UpdateWeightsReverse(sentPath, sentList)
+		for _, path := range sentPath {
+			metric.OperationNum += int64(len(path)-1)
+		}
 		if err != nil {
-			return false, err
+			return metric, err
 		}
 	} else {
-		return true, nil
+		for i, amt := range sentList {
+			metric.Fees += amt*utils.Amount(len(sentPath[i])-1)*utils.FEERATE
+			if len(sentPath[i]) > metric.MaxPathLengh {
+				metric.MaxPathLengh = len(sentPath[i])
+			}
+		}
+		return metric, nil
 	}
-	return false, nil
+	return metric, nil
 }
 
 func (f *Flash)getCachePaths(src, dest utils.RouterID) []utils.Path {

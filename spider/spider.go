@@ -2,7 +2,6 @@ package spider
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 )
 
@@ -20,29 +19,44 @@ type Spider struct {
 
 
 func (s *Spider) SendPayment (src, dest utils.RouterID,
-	amt utils.Amount) error {
+	amt utils.Amount) (*utils.Metrics, error) {
+
+	metric := &utils.Metrics{0,0,0,0}
 	switch s.algo {
 	case WATERFIILING:
 		paths := s.getPaths(src,dest, s.pathNum)
 		//spew.Dump(paths)
 		routeMins := make([]utils.Amount, len(paths))
+		maxLength := 0
 		// 计算出每条路径的最小值，并且获取每条通道的容量
 		for j, path := range paths {
 			routeMins[j] = utils.GetPathCap(path, s.Channels)
+			metric.ProbeMessgeNum += int64(len(path)-1)
+			if len(path) > maxLength {
+				maxLength = len(path)
+			}
 		}
-
+		metric.MaxPathLengh = maxLength
 		distri, err := s.waterFilling(amt, routeMins)
 		if err != nil {
-			return fmt.Errorf("insufficient")
+			return metric,fmt.Errorf("insufficient")
 		}
-		spew.Dump(distri)
 		err = s.UpdateWeights(paths, distri)
 		if err != nil {
-			return err
+			return metric,err
 		}
-		return nil
+
+		// update the metrics
+		for i, amt := range distri {
+			if amt != 0 {
+				metric.OperationNum += int64(len(paths[i]) - 1)
+				metric.Fees += utils.FEERATE*utils.Amount(len(paths[i])-1)*distri[i]
+			}
+		}
+
+		return metric, nil
 	}
-	return nil
+	return metric, nil
 }
 
 func NewSpider(g *utils.Graph, algo, pathNum int) *Spider {

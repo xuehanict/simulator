@@ -17,7 +17,7 @@ func TestSpider_SendPayment(t *testing.T) {
 		t.Fatalf("faced error:%v", err)
 	}
 	spider := NewSpider(graph, WATERFIILING, 4)
-	err = spider.SendPayment(2, 7, 30)
+	_, err = spider.SendPayment(2, 7, 30)
 	if err != nil {
 		t.Fatalf("faced error:%v", err)
 	}

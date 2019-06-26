@@ -243,19 +243,20 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *utils.DAG {
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutes(src, dest utils.RouterID,
-	amount utils.Amount) []utils.Path {
+	amount utils.Amount, metric *utils.Metrics) []utils.Path {
 
 	if _, ok := m.DAGs[dest]; !ok {
 		m.DAGs[dest] = m.MaraSpeOpt(dest)
 	}
 	fmt.Printf("DAG构架能完成\n")
 	return m.nextHop(nil, src, dest, amount,
-		DEFAULT_PATH_ADD_LENTH, PROBE_AMOUNT_RATE)
+		DEFAULT_PATH_ADD_LENTH, PROBE_AMOUNT_RATE, metric)
 }
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
-func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
-	amount utils.Amount, maxLenth float64, amtRate float64) []utils.Path {
+func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
+	algo int, amount utils.Amount, maxLenth float64, amtRate float64,
+	metric *utils.Metrics) []utils.Path {
 
 	if _, ok := m.DAGs[dest]; !ok {
 		switch algo {
@@ -271,7 +272,7 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID, algo int,
 	//fmt.Printf("DAG构架能完成\n")
 	fmt.Printf("maxLength:%v\n", finalLen)
 	return m.nextHop(nil, src, dest, amount,
-		finalLen, amtRate)
+		finalLen, amtRate, metric)
 }
 
 type parentSorter struct {
@@ -296,8 +297,8 @@ func (s parentSorter) Swap (i, j int)  {
 }
 
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
-	dest utils.RouterID, amount utils.Amount,
-	maxLength float64, amtRate float64) []utils.Path {
+	dest utils.RouterID, amount utils.Amount, maxLength float64,
+	amtRate float64,metric *utils.Metrics) []utils.Path {
 
 	// arrived in the end. we return the final path.
 	if current == dest {
@@ -328,9 +329,9 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 				float64(len(curPath)) > maxLength {
 				continue
 			}
-
+			metric.ProbeMessgeNum++
 			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount,
-				maxLength, amtRate)
+				maxLength, amtRate,metric)
 			if len(tmpPaths) != 0 {
 				paths = append(paths, tmpPaths...)
 			}
@@ -341,11 +342,11 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 
 func (m *Mara) SendPayment(src, dest utils.RouterID,
 	amount utils.Amount) error {
-	
+	metric := &utils.Metrics{}
 	if amount == 0 {
 		return nil
 	}	
-	routes := m.getRoutes(src, dest, amount)
+	routes := m.getRoutes(src, dest, amount, metric)
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
 		return err
@@ -356,15 +357,17 @@ func (m *Mara) SendPayment(src, dest utils.RouterID,
 }
 
 func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
-	amount utils.Amount, addLenth float64, amtRate float64) (int, int, error) {
-		
+	amount utils.Amount, addLenth float64, amtRate float64) (
+	int, int, *utils.Metrics, error) {
+
+	metric := &utils.Metrics{0,0,0,0}
 	if amount == 0 {
-		return 0, 0, nil
+		return 0, 0, metric, nil
 	}	
 	routes := m.getRoutesWithBond(src, dest, algo,amount,
-		addLenth, amtRate)
+		addLenth, amtRate, metric)
 	if len(routes) == 0 {
-		return 0, 0, &PaymentError{
+		return 0, 0, metric, &PaymentError{
 			Code:FIND_PATH_FAILED,
 			Description: "cannot find a path",
 		}
@@ -372,14 +375,14 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
-		return 0, 0, &PaymentError{
+		return 0, 0, metric, &PaymentError{
 			Code:ALLOCARION_FAILED,
 			Description: "allocation failed :" + err.Error(),
 		}
 	}
 
 	if len(result) != len(routes) {
-		return 0, 0, &PaymentError{
+		return 0, 0,metric, &PaymentError{
 			Code: ALLOCATION_NOT_MATCH_ROUTE,
 			Description: "allocation donn't match routes",
 		}
@@ -398,20 +401,27 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 	}
 
 	if math.Abs(total-float64(amount)) > 0.0000000001 {
-		return 0, 0, &PaymentError{
+		return 0, 0, metric, &PaymentError{
 			Code: ALLOCARION_FAILED,
 			Description: "allocation failed.",
 		}
 	}
 
 	err = m.UpdateWeights(selectedRoutes, selectedResult)
+	for i, path := range selectedRoutes {
+		if metric.MaxPathLengh < len(path) {
+			metric.MaxPathLengh = len(path)
+		}
+		metric.OperationNum += int64(len(path)-1)
+		metric.Fees += utils.Amount(len(path)-1)*utils.FEERATE*selectedResult[i]
+	}
 	if err != nil {
-		return len(routes), len(selectedRoutes), &PaymentError{
+		return len(routes), len(selectedRoutes), metric, &PaymentError{
 			Code: UPDATE_LINK_FAILED,
 			Description: fmt.Sprintf("update link failed :%v", err.Error()),
 		}	
 	}
-	return len(routes), len(selectedRoutes), nil
+	return len(routes), len(selectedRoutes), metric, nil
 }
 
 func (m *Mara) allocMoney(routes []utils.Path,

@@ -65,16 +65,27 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int,
 			usedNumTotal := 0.0
 			notFound := 0
 			allcFailed := 0
+
+			totalProbe := int64(0)
+			totalOperation := int64(0)
+			totalMaxLength := 0.0
+			totalFees := utils.Amount(0)
+
 			for _, tran := range trans {
 				total++
-				pathN, usedN, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
+				pathN, usedN, metric, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
 					utils.RouterID(tran.Dest), algo,utils.Amount(tran.Val), maxL, lb)
+				totalProbe += metric.ProbeMessgeNum
 				if err == nil {
 					success++
 					pathNumRecord = append(pathNumRecord, pathN)
 					usedNumRecord = append(usedNumRecord, usedN)
 					pathNumTotal += float64(pathN)
 					usedNumTotal += float64(usedN)
+
+					totalOperation += metric.OperationNum
+					totalMaxLength += float64(metric.MaxPathLengh)
+					totalFees += metric.Fees
 
 					log.WithFields(logrus.Fields{
 						"result":  true,
@@ -85,6 +96,10 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int,
 						"amt": tran.Val,
 						"pathN": pathN,
 						"usedN": usedN,
+						"totalProbe": totalProbe,
+						"averageMaxLen": totalMaxLength/success,
+						"averageOperation": float64(totalOperation)/success,
+						"averageFees": float64(totalFees)/success,
 					}).Trace("execute a payment.")
 				} else {
 					if payError,ok := err.(*mara.PaymentError); ok {
@@ -106,6 +121,10 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int,
 						"amt": tran.Val,
 						"pathN": pathN,
 						"usedN": usedN,
+						"totalProbe": totalProbe,
+						"averageMaxLen": totalMaxLength/success,
+						"averageOperation": float64(totalOperation)/success,
+						"averageFees": float64(totalFees)/success,
 					}).Trace("execute a payment.")
 				}
 
@@ -140,15 +159,25 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran)  {
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
 	successNum := 0
+
+	totalProbe := int64(0)
+	totalOperation := int64(0)
+	totalMaxLength := 0.0
+	totalFees := utils.Amount(0)
 	totalNum := 0
+
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum ++
-		err := s.SendPayment(utils.RouterID(tran.Src), utils.RouterID(tran.Dest),
+		metric, err := s.SendPayment(utils.RouterID(tran.Src), utils.RouterID(tran.Dest),
 			utils.Amount(tran.Val))
+		totalProbe += metric.ProbeMessgeNum
 		if err == nil {
 			successNum ++
 			successAmt += utils.Amount(tran.Val)
+			totalMaxLength += float64(metric.MaxPathLengh)
+			totalFees += metric.Fees
+			totalOperation += metric.OperationNum
 		}
 		log.WithFields(logrus.Fields{
 			"success": successNum,
@@ -158,6 +187,10 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran)  {
 			"amt": tran.Val,
 			"successVolume": successAmt,
 			"totalVolume": totalAmt,
+			"totalProbe": totalProbe,
+			"averageMaxLen": totalMaxLength/float64(successNum),
+			"averageOperation": float64(totalOperation)/float64(successNum),
+			"averageFees": float64(totalFees)/float64(successNum),
 		}).Trace("execute a payment.")
 	}
 }
@@ -174,17 +207,26 @@ func FlashEval(f *flash.Flash, trans []utils.Tran)  {
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
-	successNum := 0
+	successNum := 0.0
 	totalNum := 0
+
+	totalProbe := int64(0)
+	totalOperation := int64(0)
+	totalMaxLength := 0.0
+	totalFees := utils.Amount(0)
 
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum ++
-		res, err := f.SendPayment(utils.Amount(tran.Val), thredhold,
+		metric, err := f.SendPayment(utils.Amount(tran.Val), thredhold,
 			utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
-		if res && err == nil {
+		totalProbe += metric.ProbeMessgeNum
+		if err == nil {
 			successNum ++
 			successAmt += utils.Amount(tran.Val)
+			totalMaxLength += float64(metric.MaxPathLengh)
+			totalFees += metric.Fees
+			totalOperation += metric.OperationNum
 		}
 		log.WithFields(logrus.Fields{
 			"success": successNum,
@@ -194,6 +236,10 @@ func FlashEval(f *flash.Flash, trans []utils.Tran)  {
 			"amt": tran.Val,
 			"successVolume": successAmt,
 			"totalVolume": totalAmt,
+			"totalProbe": totalProbe,
+			"averageMaxLen": totalMaxLength/successNum,
+			"averageOperation": float64(totalOperation)/successNum,
+			"averageFees": float64(totalFees)/successNum,
 		}).Trace("execute a payment.")
 	}
 }
@@ -207,17 +253,28 @@ func SWEval(s *landmark.SW, trans []utils.Tran)  {
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
-	successNum := 0
+	successNum := 0.0
 	totalNum := 0
+
+	totalProbe := int64(0)
+	totalOperation := int64(0)
+	totalMaxLength := 0.0
+	totalFees := utils.Amount(0)
 
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum ++
-		res, err := s.SendPayment(utils.RouterID(tran.Src),
-			utils.RouterID(tran.Dest),utils.Amount(tran.Val), )
-		if res && err == nil {
+		metric, err := s.SendPayment(utils.RouterID(tran.Src),
+			utils.RouterID(tran.Dest),utils.Amount(tran.Val))
+		totalProbe += metric.ProbeMessgeNum
+		if err == nil {
 			successNum ++
 			successAmt += utils.Amount(tran.Val)
+			totalMaxLength += float64(metric.MaxPathLengh)
+			totalFees += metric.Fees
+			totalOperation += metric.OperationNum
+		} else {
+
 		}
 		log.WithFields(logrus.Fields{
 			"success": successNum,
@@ -227,6 +284,10 @@ func SWEval(s *landmark.SW, trans []utils.Tran)  {
 			"amt": tran.Val,
 			"successVolume": successAmt,
 			"totalVolume": totalAmt,
+			"totalProbe": totalProbe,
+			"averageMaxLen": totalMaxLength/successNum,
+			"averageOperation": float64(totalOperation)/successNum,
+			"averageFees": float64(totalFees)/successNum,
 		}).Trace("execute a payment.")
 	}
 }
@@ -240,17 +301,27 @@ func SMEval(s *landmark.SM, trans []utils.Tran)  {
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
-	successNum := 0
+	successNum := 0.0
 	totalNum := 0
+
+	totalProbe := int64(0)
+	totalOperation := int64(0)
+	totalMaxLength := 0.0
+	totalFees := utils.Amount(0)
 
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum ++
-		res, err := s.SendPayment(utils.RouterID(tran.Src),
+		metric, err := s.SendPayment(utils.RouterID(tran.Src),
 			utils.RouterID(tran.Dest),utils.Amount(tran.Val), )
-		if res && err == nil {
+		totalProbe += metric.ProbeMessgeNum
+
+		if  err == nil {
 			successNum ++
 			successAmt += utils.Amount(tran.Val)
+			totalMaxLength += float64(metric.MaxPathLengh)
+			totalFees += metric.Fees
+			totalOperation += metric.OperationNum
 		}
 		log.WithFields(logrus.Fields{
 			"success": successNum,
@@ -260,6 +331,10 @@ func SMEval(s *landmark.SM, trans []utils.Tran)  {
 			"amt": tran.Val,
 			"successVolume": successAmt,
 			"totalVolume": totalAmt,
+			"totalProbe": totalProbe,
+			"averageMaxLen": totalMaxLength/successNum,
+			"averageOperation": float64(totalOperation)/successNum,
+			"averageFees": float64(totalFees)/successNum,
 		}).Trace("execute a payment.")
 	}
 }
