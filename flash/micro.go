@@ -112,6 +112,7 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 		if err != nil {
 			return metric, err
 		}
+		return metric, fmt.Errorf("not enough")
 	} else {
 		for i, amt := range sentList {
 			metric.Fees += amt*utils.Amount(len(sentPath[i])-1)*utils.FEERATE
@@ -121,7 +122,6 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 		}
 		return metric, nil
 	}
-	return metric, nil
 }
 
 func (f *Flash)getCachePaths(src, dest utils.RouterID) []utils.Path {
