@@ -81,7 +81,7 @@ func main() {
 		case "sm":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
-			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			SMEval(s, trans[0:tranNum])
 
 		case "sw":

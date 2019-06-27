@@ -14,6 +14,8 @@ import (
 type Mara struct {
 	Name string
 	*utils.Graph
+	NextHopBound int
+	AmountRate float64
 }
 
 const (

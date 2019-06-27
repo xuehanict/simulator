@@ -61,10 +61,11 @@ func generateTransFromPath (path string) ([]Tran, error) {
 	res := make([]Tran,0)
 	for _, file := range files {
 		if strings.Contains(file.Name(), "sample") {
-			trans := GenerateTrans(file.Name())
+			trans := GenerateTrans(path+file.Name())
 			res = append(res, trans...)	
 		}
 	}
+	fmt.Printf("trans length is %v\n", len(res))
 	return res, nil
 }
 
@@ -80,7 +81,7 @@ func SampleTrans(dirPath string, num int) ([]Tran, error) {
 	sampled := make([]Tran, 0)
 	toolMap := make(map[int]Tran)
 	rand.Seed(time.Now().UnixNano())
-	for ; len(toolMap) <= num; {
+	for ; len(toolMap) < num; {
 		idx := rand.Intn(len(trans))
 		toolMap[idx] = trans[idx]
 	}
