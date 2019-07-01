@@ -101,7 +101,7 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"totalProbe":       totalProbe,
 				"averageMaxLen":    totalMaxLength / success,
 				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / success,
+				"averageFees":      float64(totalFees) / successVolumn,
 			}).Trace("execute a payment.")
 		} else {
 			if payError, ok := err.(*mara.PaymentError); ok {
@@ -126,7 +126,7 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"totalProbe":       totalProbe,
 				"averageMaxLen":    totalMaxLength / success,
 				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / success,
+				"averageFees":      float64(totalFees) / successVolumn,
 				"totalVolumn": 		totalVolumn,
 				"successVolumn":	successVolumn,
 			}).Trace("execute a payment.")
@@ -147,6 +147,7 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 		"averageAllpath":  pathNumTotal / success,
 		"averageUsedPath": usedNumTotal / success,
 		"totalProbe":       totalProbe,
+		"averageFees":      float64(totalFees) / successVolumn,
 		"averageOperation": float64(totalOperation) / success,
 		"averageMaxLen":    totalMaxLength / success,
 		"totalVolumn": 		totalVolumn,
@@ -192,7 +193,7 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 			"totalProbe":       totalProbe,
 			"averageMaxLen":    totalMaxLength / float64(successNum),
 			"averageOperation": float64(totalOperation) / float64(successNum),
-			"averageFees":      float64(totalFees) / float64(successNum),
+			"averageFees":      float64(totalFees) / float64(successAmt),
 		}).Trace("execute a payment.")
 	}
 }
@@ -241,7 +242,7 @@ func FlashEval(f *flash.Flash, trans []utils.Tran,other string) {
 			"totalProbe":       totalProbe,
 			"averageMaxLen":    totalMaxLength / successNum,
 			"averageOperation": float64(totalOperation) / successNum,
-			"averageFees":      float64(totalFees) / successNum,
+			"averageFees":      totalFees / successAmt,
 		}).Trace("execute a payment.")
 	}
 }
@@ -289,7 +290,7 @@ func SWEval(s *landmark.SW, trans []utils.Tran, other string) {
 			"totalProbe":       totalProbe,
 			"averageMaxLen":    totalMaxLength / successNum,
 			"averageOperation": float64(totalOperation) / successNum,
-			"averageFees":      float64(totalFees) / successNum,
+			"averageFees":      totalFees / successAmt,
 		}).Trace("execute a payment.")
 	}
 }
@@ -336,7 +337,7 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 			"totalProbe":       totalProbe,
 			"averageMaxLen":    totalMaxLength / successNum,
 			"averageOperation": float64(totalOperation) / successNum,
-			"averageFees":      float64(totalFees) / successNum,
+			"averageFees":      totalFees / successAmt,
 		}).Trace("execute a payment.")
 	}
 }
