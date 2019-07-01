@@ -40,12 +40,18 @@ func main() {
 			g := utils.GetGraph("./data")
 			m := &mara.Mara{
 				Graph:g,
-				MaxAddLength: 6,
+				MaxAddLength: 2,
 				AmountRate: 0.1,
 				NextHopBound: 100,
 			}
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
+			//MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
+
+			bounds := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
+			for _, bound := range bounds {
+				m.NextHopBound = bound
+				MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
+			}
 
 		case "sm":
 			g := utils.GetGraph("./data")
@@ -108,3 +114,8 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+func testMany(m *mara.Mara)  {
+
+}
+
