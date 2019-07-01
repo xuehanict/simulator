@@ -41,23 +41,23 @@ func main() {
 			m := &mara.Mara{
 				Graph:g,
 				MaxAddLength: 6,
-				AmountRate: 0.05,
+				AmountRate: 0.1,
 				NextHopBound: 100,
 			}
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			MaraEval(m, trans[0:tranNum], mara.MARA_MC)
+			MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
 
 		case "sm":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			SMEval(s, trans[0:tranNum])
+			SMEval(s, trans[0:tranNum], "tr-2")
 
 		case "sw":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSw(g, []utils.RouterID{5, 38, 13})
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			SWEval(s, trans[0:tranNum])
+			SWEval(s, trans[0:tranNum], "tr-2")
 		case "dijk":
 			g := utils.GetGraph("./data")
 			m := &mara.Mara{
@@ -67,13 +67,13 @@ func main() {
 				NextHopBound: 100,
 			}
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			MaraEval(m, trans[0:tranNum], mara.MARA_SPT)
+			MaraEval(m, trans[0:tranNum], mara.MARA_SPT, "tr-2")
 
 		case "sp":
 			g := utils.GetGraph("./data")
 			s := spider.NewSpider(g, spider.WATERFIILING, 4)
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			SpiderEval(s, trans[0:tranNum])
+			SpiderEval(s, trans[0:tranNum], "tr-2")
 
 		case "flash":
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
@@ -98,7 +98,7 @@ func main() {
 			}
 			wg.Wait()
 			fmt.Printf("算完所有路径\n")
-			FlashEval(f, trans)
+			FlashEval(f, trans, "tr-2")
 		}
 		return nil
 	}

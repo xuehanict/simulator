@@ -11,17 +11,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 	"sort"
-	"time"
 )
 
 func initLoger(str string) *logrus.Logger {
-	file := "logs/" + str + time.Now().Format("20060102030507") + ".sum" //文件名
+	file := "logs/" + str +".sum" //文件名
 	summaryLogFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
 	}
 
-	file1 := "logs/" + str + time.Now().Format("20060102030507") + ".log" //文件名
+	file1 := "logs/" + str + ".log" //文件名
 	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
@@ -46,9 +45,11 @@ func initLoger(str string) *logrus.Logger {
 	return log
 }
 
-func MaraEval(m *mara.Mara, trans []utils.Tran, algo int) {
+func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 
-	log := initLoger("MARA_")
+	logName := fmt.Sprintf("MARA_%v_%v_%v_%v",
+		m.MaxAddLength, m.AmountRate,m.NextHopBound, len(trans))
+	log := initLoger(logName+other)
 	backupChannelBase := utils.CopyChannels(m.Channels)
 
 	total := 0.0
@@ -151,8 +152,8 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int) {
 	}).Infof("a round test result shows")
 }
 
-func SpiderEval(s *spider.Spider, trans []utils.Tran) {
-	log := initLoger("SPIDER_")
+func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
+	log := initLoger("SPIDER_" + other)
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
@@ -193,9 +194,9 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran) {
 	}
 }
 
-func FlashEval(f *flash.Flash, trans []utils.Tran) {
+func FlashEval(f *flash.Flash, trans []utils.Tran,other string) {
 
-	log := initLoger("FLASH_")
+	log := initLoger("FLASH_" + other)
 	tranAmts := make([]float64, 0)
 	for _, tran := range trans {
 		tranAmts = append(tranAmts, tran.Val)
@@ -242,8 +243,8 @@ func FlashEval(f *flash.Flash, trans []utils.Tran) {
 	}
 }
 
-func SWEval(s *landmark.SW, trans []utils.Tran) {
-	log := initLoger("SW_")
+func SWEval(s *landmark.SW, trans []utils.Tran, other string) {
+	log := initLoger("SW_" + other)
 	tranAmts := make([]float64, 0)
 	for _, tran := range trans {
 		tranAmts = append(tranAmts, tran.Val)
@@ -290,8 +291,8 @@ func SWEval(s *landmark.SW, trans []utils.Tran) {
 	}
 }
 
-func SMEval(s *landmark.SM, trans []utils.Tran) {
-	log := initLoger("SM_")
+func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
+	log := initLoger("SM_"+ other)
 	tranAmts := make([]float64, 0)
 	for _, tran := range trans {
 		tranAmts = append(tranAmts, tran.Val)
