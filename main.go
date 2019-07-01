@@ -17,22 +17,6 @@ import (
 )
 
 func main() {
-	/*
-		testCase := 2
-
-		switch testCase {
-		case 1:
-			testSW()
-		case 2:
-			testSWBigData()
-		case 3:
-			testSWTree()
-		case 4:
-			testSMTree()
-		case 5:
-			testSMBigData()
-		}
-	*/
 
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
@@ -53,30 +37,15 @@ func main() {
 		tranNum := c.Int("trans_num")
 		switch algo {
 		case "mara":
-			amountLB := []float64{0.05}
-			pathAddLenth := []float64{6}
-
-			wg := sync.WaitGroup{}
-			i := 0
-			for {
-				time.Sleep(time.Second)
-				//fmt.Printf("=============%v", i)
-				if i == len(amountLB) {
-					break
-				}
-				go func(idx int) {
-					wg.Add(1)
-					g := utils.GetGraph("./data")
-					m := &mara.Mara{
-						Graph:g,
-					}
-					trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-					MaraEval(m, trans[0:tranNum], mara.MARA_MC,amountLB[idx:idx+1], pathAddLenth)
-					wg.Done()
-				}(i)
-				i++
+			g := utils.GetGraph("./data")
+			m := &mara.Mara{
+				Graph:g,
+				MaxAddLength: 6,
+				AmountRate: 0.05,
+				NextHopBound: 100,
 			}
-			wg.Wait()
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
+			MaraEval(m, trans[0:tranNum], mara.MARA_MC)
 
 		case "sm":
 			g := utils.GetGraph("./data")
@@ -87,19 +56,27 @@ func main() {
 		case "sw":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSw(g, []utils.RouterID{5, 38, 13})
-			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			SWEval(s, trans[0:tranNum])
 		case "dijk":
-
+			g := utils.GetGraph("./data")
+			m := &mara.Mara{
+				Graph:g,
+				MaxAddLength: 6,
+				AmountRate: 0.05,
+				NextHopBound: 100,
+			}
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
+			MaraEval(m, trans[0:tranNum], mara.MARA_SPT)
 
 		case "sp":
 			g := utils.GetGraph("./data")
 			s := spider.NewSpider(g, spider.WATERFIILING, 4)
-			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			SpiderEval(s, trans[0:tranNum])
 
 		case "flash":
-			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-1.txt")
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			trans = trans[0:tranNum]
 			g := utils.GetGraph("./data")
 			f := flash.NewFlash(g, 20, true)
@@ -123,7 +100,6 @@ func main() {
 			fmt.Printf("算完所有路径\n")
 			FlashEval(f, trans)
 		}
-
 		return nil
 	}
 

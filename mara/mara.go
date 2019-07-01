@@ -15,17 +15,21 @@ type Mara struct {
 	Name string
 	*utils.Graph
 	NextHopBound int
-	AmountRate float64
+	AmountRate   float64
+	MaxAddLength float64
 }
 
 const (
-	PROBE_AMOUNT_RATE  = 0.01
+	PROBE_AMOUNT_RATE      = 0.01
 	DEFAULT_PATH_ADD_LENTH = 1
-	MAX_ADJACENT       = 100000
-	MARA_MC			   = 0
-	MARA_SPE		   = 1
-	MARA_SPT		   = 2
-	SELECT_BOUND	   = 100
+	MAX_ADJACENT           = 100000
+	MARA_MC                = 0
+	MARA_SPE               = 1
+	MARA_SPT               = 2
+
+	// 线性规划目标
+	MIN_FEES     = 1
+	RATE_BALANCE = 2
 )
 
 type capElement struct {
@@ -257,50 +261,48 @@ func (m *Mara) getRoutes(src, dest utils.RouterID,
 
 // 获取供交易的路径，沿父节点的方向向上至dest节点
 func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
-	algo int, amount utils.Amount, maxLenth float64, amtRate float64,
-	metric *utils.Metrics) []utils.Path {
+	algo int, amount utils.Amount, metric *utils.Metrics) []utils.Path {
 
 	if _, ok := m.DAGs[dest]; !ok {
 		switch algo {
-		case MARA_MC :
+		case MARA_MC:
 			m.DAGs[dest] = m.MaraMcOPT(dest)
 		case MARA_SPE:
 			m.DAGs[dest] = m.MaraSpeOpt(dest)
 		case MARA_SPT:
-			m.DAGs[dest],_ = utils.Dijkstra(m.Nodes, dest)
+			m.DAGs[dest], _ = utils.Dijkstra(m.Nodes, dest)
 		}
 	}
-	finalLen := maxLenth + m.Distance[dest][src]
+	finalLen := m.MaxAddLength + m.Distance[dest][src]
 	//fmt.Printf("DAG构架能完成\n")
 	fmt.Printf("maxLength:%v\n", finalLen)
 	return m.nextHop(nil, src, dest, amount,
-		finalLen, amtRate, metric)
+		finalLen, m.AmountRate, metric)
 }
 
 type parentSorter struct {
-	current utils.RouterID
-	parents	[]utils.RouterID
+	current  utils.RouterID
+	parents  []utils.RouterID
 	channels map[string]*utils.Link
 }
 
-
-func (s parentSorter) Len () int {
+func (s parentSorter) Len() int {
 	return len(s.parents)
 }
 
-func (s parentSorter) Less (i, j int) bool {
+func (s parentSorter) Less(i, j int) bool {
 	vi := utils.GetLinkValue(s.current, utils.RouterID(i), s.channels)
 	vj := utils.GetLinkValue(s.current, utils.RouterID(j), s.channels)
 	return vi > vj
 }
 
-func (s parentSorter) Swap (i, j int)  {
+func (s parentSorter) Swap(i, j int) {
 	s.parents[i], s.parents[j] = s.parents[j], s.parents[i]
 }
 
 func (m *Mara) nextHop(curPath []utils.RouterID, current,
 	dest utils.RouterID, amount utils.Amount, maxLength float64,
-	amtRate float64,metric *utils.Metrics) []utils.Path {
+	amtRate float64, metric *utils.Metrics) []utils.Path {
 
 	// arrived in the end. we return the final path.
 	if current == dest {
@@ -314,17 +316,17 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 		newCurPath[len(newCurPath)-1] = current
 
 		sorter := parentSorter{
-			current: current,
-			parents: m.DAGs[dest].Vertexs[current].Parents,
+			current:  current,
+			parents:  m.DAGs[dest].Vertexs[current].Parents,
 			channels: m.Channels,
 		}
 		sort.Sort(sorter)
 
 		// TODO(xuehan) 判断长度
-		if sorter.Len() > SELECT_BOUND {
-			sorter.parents = sorter.parents[0:SELECT_BOUND]
+		if sorter.Len() > m.NextHopBound {
+			sorter.parents = sorter.parents[0:m.NextHopBound]
 		}
-		for _, pnode := range sorter.parents{
+		for _, pnode := range sorter.parents {
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
@@ -333,7 +335,7 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 			}
 			metric.ProbeMessgeNum++
 			tmpPaths := m.nextHop(newCurPath, pnode, dest, amount,
-				maxLength, amtRate,metric)
+				maxLength, amtRate, metric)
 			if len(tmpPaths) != 0 {
 				paths = append(paths, tmpPaths...)
 			}
@@ -347,30 +349,29 @@ func (m *Mara) SendPayment(src, dest utils.RouterID,
 	metric := &utils.Metrics{}
 	if amount == 0 {
 		return nil
-	}	
+	}
 	routes := m.getRoutes(src, dest, amount, metric)
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
 		return err
 	}
 	err = m.UpdateWeights(routes, result)
-//	spew.Dump(m.Channels)
+	//	spew.Dump(m.Channels)
 	return err
 }
 
 func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
-	amount utils.Amount, addLenth float64, amtRate float64) (
+	amount utils.Amount) (
 	int, int, *utils.Metrics, error) {
 
-	metric := &utils.Metrics{0,0,0,0}
+	metric := &utils.Metrics{0, 0, 0, 0}
 	if amount == 0 {
 		return 0, 0, metric, nil
-	}	
-	routes := m.getRoutesWithBond(src, dest, algo,amount,
-		addLenth, amtRate, metric)
+	}
+	routes := m.getRoutesWithBond(src, dest, algo, amount, metric)
 	if len(routes) == 0 {
 		return 0, 0, metric, &PaymentError{
-			Code:FIND_PATH_FAILED,
+			Code:        FIND_PATH_FAILED,
 			Description: "cannot find a path",
 		}
 	}
@@ -378,14 +379,14 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 	result, err := m.allocMoney(routes, amount)
 	if err != nil {
 		return 0, 0, metric, &PaymentError{
-			Code:ALLOCARION_FAILED,
+			Code:        ALLOCARION_FAILED,
 			Description: "allocation failed :" + err.Error(),
 		}
 	}
 
 	if len(result) != len(routes) {
-		return 0, 0,metric, &PaymentError{
-			Code: ALLOCATION_NOT_MATCH_ROUTE,
+		return 0, 0, metric, &PaymentError{
+			Code:        ALLOCATION_NOT_MATCH_ROUTE,
 			Description: "allocation donn't match routes",
 		}
 	}
@@ -404,7 +405,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 
 	if math.Abs(total-float64(amount)) > 0.0000000001 {
 		return 0, 0, metric, &PaymentError{
-			Code: ALLOCARION_FAILED,
+			Code:        ALLOCARION_FAILED,
 			Description: "allocation failed.",
 		}
 	}
@@ -414,14 +415,14 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 		if metric.MaxPathLengh < len(path) {
 			metric.MaxPathLengh = len(path)
 		}
-		metric.OperationNum += int64(len(path)-1)
-		metric.Fees += utils.Amount(len(path)-1)*utils.FEERATE*selectedResult[i]
+		metric.OperationNum += int64(len(path) - 1)
+		metric.Fees += utils.Amount(len(path)-1) * utils.FEERATE * selectedResult[i]
 	}
 	if err != nil {
 		return len(routes), len(selectedRoutes), metric, &PaymentError{
-			Code: UPDATE_LINK_FAILED,
+			Code:        UPDATE_LINK_FAILED,
 			Description: fmt.Sprintf("update link failed :%v", err.Error()),
-		}	
+		}
 	}
 	return len(routes), len(selectedRoutes), metric, nil
 }
@@ -430,7 +431,7 @@ func (m *Mara) allocMoney(routes []utils.Path,
 	amount utils.Amount) ([]utils.Amount, error) {
 
 	if len(routes) == 1 {
-		cap := utils.GetPathCap(routes[0],m.Channels)
+		cap := utils.GetPathCap(routes[0], m.Channels)
 		if cap < amount {
 			return nil, fmt.Errorf("no enough money")
 		} else {
@@ -507,6 +508,7 @@ func (m *Mara) linearProgram(
 	for j, route := range routes {
 		lp.SetObjCoef(j+1, float64(len(route)))
 	}
+
 	ind := []int32{0}
 	for i := range routeMins {
 		ind = append(ind, int32(i)+1)
