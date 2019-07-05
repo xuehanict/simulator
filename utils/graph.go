@@ -288,6 +288,7 @@ func GetGraph(data string) *Graph {
 		SPTs:     make(map[RouterID]*DAG),
 		Distance: make(map[RouterID]map[RouterID]float64),
 	}
+	RanddomFeeRate(links)
 	return graph
 }
 
@@ -295,4 +296,12 @@ func (g *Graph)UpdateLinkValue(from, to RouterID, amt Amount,
 	addOrSub bool) error {
 	err := UpdateLinkValue(from,to, g.Channels, amt, addOrSub)
 	return err
+}
+
+func (g *Graph)GetFee(path Path, amt Amount) Amount {
+	fee := Amount(0)
+	for i:=0;i<len(path)-1; i++ {
+		fee += GetLinkFeeRate(path[i],path[i+1], g.Channels) * amt
+	}
+	return fee
 }

@@ -115,7 +115,7 @@ func (f *Flash) microRouting(src, dest utils.RouterID, amt utils.Amount, k int) 
 		return metric, fmt.Errorf("not enough")
 	} else {
 		for i, amt := range sentList {
-			metric.Fees += amt*utils.Amount(len(sentPath[i])-1)*utils.FEERATE
+			metric.Fees += f.GetFee(sentPath[i], amt)
 			if len(sentPath[i]) > metric.MaxPathLengh {
 				metric.MaxPathLengh = len(sentPath[i])
 			}

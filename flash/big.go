@@ -28,11 +28,11 @@ func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
 	err = f.UpdateWeights(paths, amts)
 	for i, path := range paths {
 		if amts[i] != 0 {
-			metiric.OperationNum += int64(len(path)-1)
+	metiric.OperationNum += int64(len(path)-1)
 			if len(path) > metiric.MaxPathLengh {
 				metiric.MaxPathLengh = len(path)
 			}
-			metiric.Fees += amts[i]*utils.Amount(len(path)-1)*utils.FEERATE
+			metiric.Fees += f.GetFee(path, amts[i])
 		}
 	}
 	if err != nil {

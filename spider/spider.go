@@ -32,11 +32,7 @@ func (s *Spider) SendPayment (src, dest utils.RouterID,
 		for j, path := range paths {
 			routeMins[j] = utils.GetPathCap(path, s.Channels)
 			metric.ProbeMessgeNum += int64(len(path)-1)
-			if len(path) > maxLength {
-				maxLength = len(path)
-			}
 		}
-		metric.MaxPathLengh = maxLength
 		distri, err := s.waterFilling(amt, routeMins)
 		if err != nil {
 			return metric,fmt.Errorf("insufficient")
@@ -50,10 +46,13 @@ func (s *Spider) SendPayment (src, dest utils.RouterID,
 		for i, amt := range distri {
 			if amt != 0 {
 				metric.OperationNum += int64(len(paths[i]) - 1)
-				metric.Fees += utils.FEERATE*utils.Amount(len(paths[i])-1)*distri[i]
+				metric.Fees += s.GetFee(paths[i],distri[i])
+				if len(paths[i]) > maxLength {
+					maxLength = len(paths[i])
+				}
 			}
 		}
-
+		metric.MaxPathLengh = maxLength
 		return metric, nil
 	}
 	return metric, nil

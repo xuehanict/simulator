@@ -416,7 +416,7 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 			metric.MaxPathLengh = len(path)
 		}
 		metric.OperationNum += int64(len(path) - 1)
-		metric.Fees += utils.Amount(len(path)-1) * utils.FEERATE * selectedResult[i]
+		metric.Fees += m.GetFee(path, selectedResult[i])
 	}
 	if err != nil {
 		return len(routes), len(selectedRoutes), metric, &PaymentError{
@@ -504,10 +504,16 @@ func (m *Mara) linearProgram(
 		lp.SetColName(i+1, name)
 		lp.SetColBnds(i+1, glpk.DB, 0.0, float64(min))
 	}
-
+	/*
 	for j, route := range routes {
 		lp.SetObjCoef(j+1, float64(len(route)))
 	}
+	*/
+
+	for j, route := range routes {
+		lp.SetObjCoef(j+1, float64(m.GetFee(route, utils.Amount(1))))
+	}
+
 
 	ind := []int32{0}
 	for i := range routeMins {
@@ -579,22 +585,49 @@ func getDAG(ordering []utils.RouterID, nodes []*utils.Node) *utils.DAG {
 	return dag
 }
 
-/*
-func computeT(dag *DAG, S map[utils.RouterID]struct{}) map[utils.RouterID]struct{} {
-
-	U := dag.vertexs
-	T := make(map[utils.RouterID]struct{})
-
-	for id, node := range U {
-		if _, ok := S[id]; ok {
-			continue
-		}
-		for _, parent := range node.Parents {
-			if _, ok := S[parent]; ok {
-				T[id] = struct{}{}
-			}
+func (m *Mara)TryPay(src, dest utils.RouterID, algo int,
+	amount utils.Amount) ([]utils.Path, []utils.Amount, error){
+	metric  := &utils.Metrics{}
+	routes := m.getRoutesWithBond(src, dest, algo, amount, metric)
+	if len(routes) == 0 {
+		return nil, nil, &PaymentError{
+			Code:        FIND_PATH_FAILED,
+			Description: "cannot find a path",
 		}
 	}
-	return T
+
+	result, err := m.allocMoney(routes, amount)
+	if err != nil {
+		return nil, nil, &PaymentError{
+			Code:        ALLOCARION_FAILED,
+			Description: "allocation failed :" + err.Error(),
+		}
+	}
+
+	if len(result) != len(routes) {
+		return nil, nil, &PaymentError{
+			Code:        ALLOCATION_NOT_MATCH_ROUTE,
+			Description: "allocation donn't match routes",
+		}
+	}
+
+	selectedRoutes := make([]utils.Path, 0)
+	selectedResult := make([]utils.Amount, 0)
+	total := 0.0
+
+	for i := 0; i < len(result); i++ {
+		if result[i] != 0 {
+			total += float64(result[i])
+			selectedRoutes = append(selectedRoutes, routes[i])
+			selectedResult = append(selectedResult, result[i])
+		}
+	}
+
+	if math.Abs(total-float64(amount)) > 0.0000000001 {
+		return nil, nil, &PaymentError{
+			Code:        ALLOCARION_FAILED,
+			Description: "allocation failed.",
+		}
+	}
+	return selectedRoutes, selectedResult, nil
 }
-*/

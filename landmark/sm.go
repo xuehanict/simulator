@@ -105,7 +105,7 @@ func (s *SM) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 		// 这里才是真正支付
 		err = s.UpdateWeight(path, splittedAmounts[i])
 		metric.OperationNum += int64(len(path)-1)
-		metric.Fees += splittedAmounts[i]*utils.FEERATE *utils.Amount(len(path) -1)
+		metric.Fees += s.GetFee(path, splittedAmounts[i])
 		if err != nil {
 			return metric, fmt.Errorf("探路完支付失败")
 		}

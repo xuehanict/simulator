@@ -3,7 +3,9 @@ package utils
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strconv"
+	"time"
 )
 
 /*
@@ -16,6 +18,7 @@ type Link struct {
 	Part2 RouterID
 	Val1  Amount
 	Val2  Amount
+	FeeRate float64
 }
 
 // 生成link的key
@@ -35,6 +38,14 @@ func GetLinkValue(from, to RouterID, linkBase map[string]*Link) Amount {
 		} else {
 			return link.Val2
 		}
+	}
+	return 0
+}
+
+func GetLinkFeeRate(from, to RouterID, linkBase map[string]*Link) Amount {
+	key := GetLinkKey(from, to)
+	if link, ok := linkBase[key]; ok {
+		return link.FeeRate
 	}
 	return 0
 }
@@ -93,9 +104,9 @@ func CopyChannels(src map[string]*Link) map[string]*Link {
 			Part2: val.Part2,
 			Val1:  val.Val1,
 			Val2:  val.Val2,
+			FeeRate: val.FeeRate,
 		}
 	}
-
 	return res
 }
 
@@ -132,3 +143,16 @@ func UpdateWeights(routes []Path, amts []Amount,
 	return nil
 }
 
+func RanddomFeeRate(linkBase map[string]*Link) {
+	largeRateNun := len(linkBase)/10
+	cursor := 0
+	rand.Seed(time.Now().UnixNano())
+	for key := range linkBase {
+		cursor++
+		if cursor < largeRateNun {
+			linkBase[key].FeeRate = rand.Float64() * 0.09 + 0.01
+		} else {
+			linkBase[key].FeeRate = rand.Float64() * 0.009 + 0.001
+		}
+	}
+}

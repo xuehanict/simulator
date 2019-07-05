@@ -22,7 +22,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "mara",
+			Value: "try",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -111,6 +111,24 @@ func main() {
 			wg.Wait()
 			fmt.Printf("算完所有路径\n")
 			FlashEval(f, trans, "tr-2")
+		case "try":
+			/*
+			trans, err := utils.SampleTrans("./data/finalSets/static/", 1000)
+			if err != nil {
+				return err
+			}
+			 */
+
+
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-5.txt")
+			g := utils.GetGraph("./data")
+			m := &mara.Mara{
+				Graph:g,
+				MaxAddLength: 2,
+				AmountRate: 0.1,
+				NextHopBound: 100,
+			}
+			testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
 		}
 		return nil
 	}
@@ -121,7 +139,94 @@ func main() {
 	}
 }
 
-func testMany(m *mara.Mara)  {
+func testMany(m *mara.Mara, trans []utils.Tran, testNum[]int)  {
 
+	type record struct {
+		paths []utils.Path
+		amts []utils.Amount
+		res bool
+	}
+	records := make(map[*utils.Tran]record)
+	probed := 0
+	/*
+	tranNum := len(trans)
+
+	wg := sync.WaitGroup{}
+	lock := sync.Mutex{}
+	calcuN := 0
+	for i:= 0; i < 10; i++ {
+		time.Sleep(time.Millisecond * 100)
+		go func( idx int) {
+			wg.Add(1)
+			tmpTrans := trans[idx*tranNum/10:(idx+1)*tranNum/10]
+			for _, tran := range tmpTrans {
+				paths, amts, err := m.TryPay(utils.RouterID(tran.Src),
+					utils.RouterID(tran.Dest), mara.MARA_MC, utils.Amount(tran.Val))
+				probed ++
+				fmt.Printf("probe %v\n", probed)
+				if err != nil {
+					lock.Lock()
+					records[&trans[i]] = record{
+						paths: paths,
+						amts: amts,
+						res: false,
+					}
+					lock.Unlock()
+				} else {
+					lock.Lock()
+					records[&trans[i]] = record{
+						paths: paths,
+						amts: amts,
+						res: true,
+					}
+					lock.Unlock()
+				}
+				calcuN ++
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+*/
+
+	for i, tran := range trans {
+		paths, amts, err := m.TryPay(utils.RouterID(tran.Src),
+			utils.RouterID(tran.Dest), mara.MARA_MC, utils.Amount(tran.Val))
+		probed ++
+		fmt.Printf("probe %v\n", probed)
+		if err != nil {
+			records[&trans[i]] = record{
+				paths: paths,
+				amts: amts,
+				res: false,
+			}
+		} else {
+			records[&trans[i]] = record{
+				paths: paths,
+				amts: amts,
+				res: true,
+			}
+		}
+	}
+	channelsBackup := utils.CopyChannels(m.Channels)
+	// 以上探路完
+	channels := utils.CopyChannels(m.Channels)
+	for _, num := range testNum {
+		conflict := 0
+		for i := range trans[0:num] {
+			if re := records[&trans[i]]; re.res == true {
+				channels = utils.CopyChannels(m.Channels)
+				err := m.UpdateWeights(re.paths, re.amts)
+				if err != nil {
+					conflict++
+					//回滚
+					m.Channels = channels
+				}
+			}
+		}
+		channels = utils.CopyChannels(channelsBackup)
+		m.Channels = utils.CopyChannels(channels)
+		fmt.Printf("total is %v, and conflict is %v\n", num, conflict)
+	}
 }
 

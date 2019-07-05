@@ -123,7 +123,7 @@ func (s *SW) SendPayment (src, dest utils.RouterID, amt utils.Amount) (
 			}
 			return metric, nil
 		}
-		metric.Fees += utils.Amount(len(path)-1)*utils.FEERATE*allcs[i]
+		metric.Fees += s.GetFee(path, allcs[i])
 		metric.OperationNum += int64(len(path)-1)
 		if len(path) > metric.MaxPathLengh {
 			metric.MaxPathLengh = len(path)
