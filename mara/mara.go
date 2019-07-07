@@ -270,7 +270,7 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
 		case MARA_SPE:
 			m.DAGs[dest] = m.MaraSpeOpt(dest)
 		case MARA_SPT:
-			m.DAGs[dest], _ = utils.Dijkstra(m.Nodes, dest)
+			m.DAGs[dest], m.Distance[dest]  = utils.Dijkstra(m.Nodes, dest)
 		}
 	}
 	finalLen := m.MaxAddLength + m.Distance[dest][src]
@@ -306,8 +306,10 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 
 	// arrived in the end. we return the final path.
 	if current == dest {
-		finalPath := append(curPath, current)
-		return []utils.Path{finalPath}
+		newCurPath := make([]utils.RouterID, len(curPath)+1)
+		copy(newCurPath, curPath)
+		newCurPath[len(newCurPath)-1] = current
+		return []utils.Path{newCurPath}
 	} else {
 		// we continue to pass the request until the destination.
 		paths := make([]utils.Path, 0)

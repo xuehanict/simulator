@@ -10,7 +10,7 @@ import (
 func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
 	*utils.Metrics, error) {
 	metiric := &utils.Metrics{0,0,0,0}
-	paths, _, err := f.findPaths(from, to)
+	paths, _, err := f.findPaths(from, to, metiric)
 	if err != nil {
 		return metiric, fmt.Errorf("routing failed :%s", err.Error())
 	}
@@ -41,10 +41,9 @@ func (f *Flash)elephantRouting(amt utils.Amount, from, to utils.RouterID)(
 	return metiric, nil
 }
 
-func (f *Flash)findPaths(src, dest utils.RouterID)(
+func (f *Flash)findPaths(src, dest utils.RouterID, metric *utils.Metrics)(
 	[]utils.Path, []utils.Amount, error) {
-	metric := utils.Metrics{0,0,0,0}
-	localChannel := utils.CopyChannels(f.Channels)
+		localChannel := utils.CopyChannels(f.Channels)
 	pathSet := make([]utils.Path, 0)
 	capSet := make([]utils.Amount,0)
 	path := utils.BfsPath(f.Nodes, src, dest, true, localChannel)

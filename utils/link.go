@@ -18,7 +18,7 @@ type Link struct {
 	Part2 RouterID
 	Val1  Amount
 	Val2  Amount
-	FeeRate float64
+	FeeRate Amount
 }
 
 // 生成link的key
@@ -150,9 +150,9 @@ func RanddomFeeRate(linkBase map[string]*Link) {
 	for key := range linkBase {
 		cursor++
 		if cursor < largeRateNun {
-			linkBase[key].FeeRate = rand.Float64() * 0.09 + 0.01
+			linkBase[key].FeeRate = Amount(rand.Float64() * 0.09 + 0.01)
 		} else {
-			linkBase[key].FeeRate = rand.Float64() * 0.009 + 0.001
+			linkBase[key].FeeRate = Amount(rand.Float64() * 0.009 + 0.001)
 		}
 	}
 }
