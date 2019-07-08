@@ -67,5 +67,6 @@ func ParseTestJson(filePath string) (*Graph, error) {
 		SPTs:     make(map[RouterID]*DAG),
 		Distance: make(map[RouterID]map[RouterID]float64),
 	}
+	RanddomFeeRate(graph.Channels)
 	return graph, nil
 }

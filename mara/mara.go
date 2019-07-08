@@ -90,7 +90,7 @@ func (m *Mara) MaraMC(startID utils.RouterID) *utils.DAG {
 func (m *Mara) MaraMcOPT(startID utils.RouterID) *utils.DAG {
 	nodes := m.Nodes
 
-	if _, ok := m.SPTs[startID]; !ok {
+	if _, ok := m.Distance[startID]; !ok {
 		m.SPTs[startID], m.Distance[startID] = utils.Dijkstra(m.Nodes, startID)
 	}
 	ordering := make([]utils.RouterID, 1)

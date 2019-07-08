@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -304,4 +305,77 @@ func (g *Graph)GetFee(path Path, amt Amount) Amount {
 		fee += GetLinkFeeRate(path[i],path[i+1], g.Channels) * amt
 	}
 	return fee
+}
+
+func (g *Graph) StoreDistances(fileName string, threadNum int) error {
+	wg := sync.WaitGroup{}
+	splitNum := len(g.Nodes) / threadNum
+	lock := sync.Mutex{}
+	num := 0
+	for i := 0; i < threadNum;  {
+		wg.Add(1)
+		go func(n int) {
+			calSet := g.Nodes[n*splitNum:(n+1)*splitNum]
+			if i == threadNum -1 {
+				calSet = append(calSet, g.Nodes[(n+1)*splitNum:len(g.Nodes)]...)
+			}
+			for _, node := range calSet {
+				_, distances := Dijkstra(g.Nodes, node.ID)
+				num ++
+				fmt.Printf("one done %v\n", num)
+				lock.Lock()
+				g.Distance[node.ID] = distances
+				lock.Unlock()
+			}
+			wg.Done()
+		}(i)
+		i++
+	}
+	wg.Wait()
+
+	fileObj,err := os.OpenFile(fileName,os.O_RDWR|os.O_CREATE,0644)
+	if err!= nil {
+		return err
+	}
+	defer fileObj.Close()
+
+	writeObj := bufio.NewWriter(fileObj)
+	for _, node := range g.Nodes {
+		//使用Write方法,需要使用Writer对象的Flush方法将buffer中的数据刷到磁盘
+		buf := make([]byte, len(g.Nodes))
+		for i:=0; i<len(g.Nodes); i++ {
+			buf[i] = byte(g.Distance[node.ID][RouterID(i)])
+		}
+		if _,err := writeObj.Write(buf);err == nil {
+			if  err := writeObj.Flush(); err != nil {panic(err)}
+		}
+	}
+	return nil
+}
+
+func (g *Graph)LoadDistances(fileName string) error {
+
+	f, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	s := make([]byte, len(g.Nodes))
+	id := RouterID(0)
+	for {
+		g.Distance[id] = make(map[RouterID]float64)
+		switch nr, err := f.Read(s[:]); true {
+		case nr < 0:
+			panic(err.Error())
+		case nr == 0: // EOF
+			delete(g.Distance,id)
+			return nil
+		case nr > 0:
+			for i, n := range s {
+				g.Distance[id][RouterID(i)] = float64(n)
+			}
+		}
+		id++
+	}
+	return nil
 }

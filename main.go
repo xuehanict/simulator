@@ -111,6 +111,15 @@ func main() {
 			wg.Wait()
 			fmt.Printf("算完所有路径\n")
 			FlashEval(f, trans, "tr-2")
+
+		case "mpdv":
+			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
+			trans = trans[0:tranNum]
+			g := utils.GetGraph("./data")
+
+
+
+
 		case "try":
 			/*
 			trans, err := utils.SampleTrans("./data/finalSets/static/", 1000)

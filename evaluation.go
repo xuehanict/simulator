@@ -5,6 +5,7 @@ import (
 	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/landmark"
 	"github.com/lightningnetwork/simulator/mara"
+	"github.com/lightningnetwork/simulator/mpdv"
 	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
 	"github.com/rifflock/lfshook"
@@ -157,7 +158,8 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 }
 
 func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
-	log := initLoger("SPIDER_" + other)
+	logName := fmt.Sprintf("SPIDER_%v", len(trans)) + other
+	log := initLoger(logName)
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
@@ -199,8 +201,9 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 }
 
 func FlashEval(f *flash.Flash, trans []utils.Tran,other string) {
+	logName := fmt.Sprintf("FLASH_%v", len(trans)) + other
+	log := initLoger(logName)
 
-	log := initLoger("FLASH_" + other)
 	tranAmts := make([]float64, 0)
 	for _, tran := range trans {
 		tranAmts = append(tranAmts, tran.Val)
@@ -248,11 +251,8 @@ func FlashEval(f *flash.Flash, trans []utils.Tran,other string) {
 }
 
 func SWEval(s *landmark.SW, trans []utils.Tran, other string) {
-	log := initLoger("SW_" + other)
-	tranAmts := make([]float64, 0)
-	for _, tran := range trans {
-		tranAmts = append(tranAmts, tran.Val)
-	}
+	logName := fmt.Sprintf("SW_%v", len(trans)) + other
+	log := initLoger(logName)
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
@@ -296,11 +296,8 @@ func SWEval(s *landmark.SW, trans []utils.Tran, other string) {
 }
 
 func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
-	log := initLoger("SM_"+ other)
-	tranAmts := make([]float64, 0)
-	for _, tran := range trans {
-		tranAmts = append(tranAmts, tran.Val)
-	}
+	logName := fmt.Sprintf("SM_%v", len(trans)) + other
+	log := initLoger(logName)
 
 	totalAmt := utils.Amount(0)
 	successAmt := utils.Amount(0)
@@ -342,6 +339,55 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 	}
 }
 
-func MaraConflictEval()  {
+func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
+	logName := fmt.Sprintf("SM_%v", len(trans)) + other
 
+	log := initLoger(logName)
+	totalAmt := utils.Amount(0)
+	successAmt := utils.Amount(0)
+	successNum := 0.0
+	totalNum := 0
+
+	totalProbe := int64(0)
+	totalOperation := int64(0)
+	totalMaxLength := 0.0
+	totalFees := utils.Amount(0)
+
+	for _, tran := range trans {
+		totalAmt += utils.Amount(tran.Val)
+		totalNum++
+		metric, err := m.SendPayment(utils.Amount(tran.Val),
+			utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
+		totalProbe += metric.ProbeMessgeNum
+
+		if err == nil {
+			successNum++
+			successAmt += utils.Amount(tran.Val)
+			totalMaxLength += float64(metric.MaxPathLengh)
+			totalFees += metric.Fees
+			totalOperation += metric.OperationNum
+		}
+
+		if totalNum % epoch == 0 {
+
+		}
+
+
+		log.WithFields(logrus.Fields{
+			"success":          successNum,
+			"total":            totalNum,
+			"from":             tran.Src,
+			"to":               tran.Dest,
+			"amt":              tran.Val,
+			"successVolume":    successAmt,
+			"totalVolume":      totalAmt,
+			"totalProbe":       totalProbe,
+			"averageMaxLen":    totalMaxLength / successNum,
+			"averageOperation": float64(totalOperation) / successNum,
+			"averageFees":      totalFees / successAmt,
+		}).Trace("execute a payment.")
+	}
 }
+
+
+

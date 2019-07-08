@@ -15,10 +15,9 @@ type Mpdv struct {
 
 	NextHopBound int
 	amtRate utils.Amount
-
 }
 
-func (m *Mpdv)initTable(dests []utils.RouterID) {
+func (m *Mpdv)InitTable(dests []utils.RouterID) {
 	table := make(map[utils.RouterID]map[utils.RouterID]map[utils.RouterID]int)
 
 	for _, dest := range dests {
@@ -40,6 +39,11 @@ func (m *Mpdv)initTable(dests []utils.RouterID) {
 	}
 	m.table = table
 }
+
+func (m *Mpdv)ResetTable(dests []utils.RouterID)  {
+
+}
+
 
 func (m *Mpdv)findPaths(src, dest utils.RouterID, amt utils.Amount,
 	metric *utils.Metrics) ([]utils.Path, error) {
@@ -261,4 +265,12 @@ func amountSum(a []utils.Amount) utils.Amount {
 		res += amt
 	}
 	return res
+}
+
+func NewMpdv(graph *utils.Graph, hopBound int, amtRate utils.Amount) *Mpdv {
+	return &Mpdv{
+		Graph:graph,
+		NextHopBound: hopBound,
+		amtRate: amtRate,
+	}
 }
