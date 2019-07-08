@@ -309,7 +309,7 @@ func (g *Graph)GetFee(path Path, amt Amount) Amount {
 
 func (g *Graph) StoreDistances(fileName string, threadNum int) error {
 	wg := sync.WaitGroup{}
-	tryNodes := g.Nodes[0:1000]
+	tryNodes := g.Nodes[1000:10000]
 
 	splitNum := len(tryNodes) / threadNum
 	lock := sync.Mutex{}

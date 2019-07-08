@@ -353,6 +353,9 @@ func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
 	totalMaxLength := 0.0
 	totalFees := utils.Amount(0)
 
+	_, dests := utils.GetSdrAndRecr(trans[0:epoch])
+	m.ResetTable(dests)
+
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum++
@@ -369,10 +372,14 @@ func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
 		}
 
 		if totalNum % epoch == 0 {
-
+			if len(trans) - totalNum < epoch {
+				_, dests := utils.GetSdrAndRecr(trans[totalNum:])
+				m.ResetTable(dests)
+			} else {
+				_, dests := utils.GetSdrAndRecr(trans[totalNum:totalNum+epoch])
+				m.ResetTable(dests)
+			}
 		}
-
-
 		log.WithFields(logrus.Fields{
 			"success":          successNum,
 			"total":            totalNum,
