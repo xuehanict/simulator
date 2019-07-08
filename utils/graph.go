@@ -355,7 +355,7 @@ func (g *Graph) StoreDistances(fileName string, threadNum int) error {
 	return nil
 }
 
-func (g *Graph)LoadDistances(fileName string) error {
+func (g *Graph)LoadDistances(fileName string, dests map[RouterID]struct{}) error {
 
 	f, err := os.Open(fileName)
 	if err != nil {
@@ -366,7 +366,6 @@ func (g *Graph)LoadDistances(fileName string) error {
 	id := RouterID(0)
 	for {
 		fmt.Printf("load one dest%v\n", id)
-		g.Distance[id] = make(map[RouterID]float64)
 		switch nr, err := f.Read(s[:]); true {
 		case nr < 0:
 			panic(err.Error())
@@ -374,6 +373,10 @@ func (g *Graph)LoadDistances(fileName string) error {
 			delete(g.Distance,id)
 			return nil
 		case nr > 0:
+			if _, ok := dests[id]; !ok {
+				continue
+			}
+			g.Distance[id] = make(map[RouterID]float64)
 			for i, n := range s {
 				g.Distance[id][RouterID(i)] = float64(n)
 			}

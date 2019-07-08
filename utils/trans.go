@@ -92,21 +92,14 @@ func SampleTrans(dirPath string, num int) ([]Tran, error) {
 	return sampled, nil
 }
 
-func GetSdrAndRecr(trans []Tran) ([]RouterID, []RouterID) {
+func GetSdrAndRecr(trans []Tran) (map[RouterID]struct{},
+	map[RouterID]struct{}) {
 	s := make(map[RouterID]struct{})
 	r := make(map[RouterID]struct{})
-	senders := make([]RouterID,0)
-	recivers := make([]RouterID, 0)
 	for _, tran := range trans {
-		if _, ok := s[RouterID(tran.Src)]; !ok {
-			senders = append(senders, RouterID(tran.Src))
-			s[RouterID(tran.Src)] = struct{}{}
-		}
-		if _, ok := r[RouterID(tran.Dest)]; !ok {
-			recivers = append(recivers, RouterID(tran.Src))
-			r[RouterID(tran.Src)] = struct{}{}
-		}
+		s[RouterID(tran.Src)] = struct{}{}
+		r[RouterID(tran.Src)] = struct{}{}
 	}
-	return senders, recivers
+	return s, r
 }
 

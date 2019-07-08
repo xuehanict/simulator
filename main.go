@@ -117,7 +117,8 @@ func main() {
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			trans = trans[0:tranNum]
 			g := utils.GetGraph("./data")
-		 	err := g.LoadDistances("./data/finalSets/static/ripple_dis")
+			_, dests := utils.GetSdrAndRecr(trans)
+		 	err := g.LoadDistances("./data/finalSets/static/ripple_dis", dests)
 			if err != nil {
 				fmt.Printf("load distance faced error")
 			}

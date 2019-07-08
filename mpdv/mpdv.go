@@ -17,7 +17,7 @@ type Mpdv struct {
 	amtRate utils.Amount
 }
 
-func (m *Mpdv)ResetTable(dests []utils.RouterID) {
+func (m *Mpdv)ResetTable(dests map[utils.RouterID]struct{}) {
 	table := make(map[utils.RouterID]map[utils.RouterID]map[utils.RouterID]int)
 
 	/*
@@ -29,7 +29,7 @@ func (m *Mpdv)ResetTable(dests []utils.RouterID) {
 	// 对每个结点构建路由表
 	for _, node := range m.Nodes {
 		table[node.ID] = make(map[utils.RouterID]map[utils.RouterID]int)
-		for _, dest := range dests {
+		for dest := range dests {
 			table[node.ID][dest] = make(map[utils.RouterID]int)
 			for _, nei := range node.Neighbours {
 				// 同样距离的结点或者小距离的结点才可能作为下一跳
