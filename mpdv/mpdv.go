@@ -42,6 +42,29 @@ func (m *Mpdv)ResetTable(dests []utils.RouterID) {
 	m.table = table
 }
 
+func (m *Mpdv)initTable(dests []utils.RouterID) {
+	table := make(map[utils.RouterID]map[utils.RouterID]map[utils.RouterID]int)
+
+	for _, dest := range dests {
+		m.SPTs[dest], m.Distance[dest] = utils.Dijkstra(m.Nodes, dest)
+	}
+
+	// 对每个结点构建路由表
+	for _, node := range m.Nodes {
+		table[node.ID] = make(map[utils.RouterID]map[utils.RouterID]int)
+		for _, dest := range dests {
+			table[node.ID][dest] = make(map[utils.RouterID]int)
+			for _, nei := range node.Neighbours {
+				// 同样距离的结点或者小距离的结点才可能作为下一跳
+				if m.Distance[dest][nei] <= m.Distance[dest][node.ID] {
+					table[node.ID][dest][nei] = int(m.Distance[dest][nei]) + 1
+				}
+			}
+		}
+	}
+	m.table = table
+}
+
 func (m *Mpdv)findPaths(src, dest utils.RouterID, amt utils.Amount,
 	metric *utils.Metrics) ([]utils.Path, error) {
 	return m.nextHop(src,dest,amt,nil,metric, m.amtRate), nil
@@ -116,7 +139,7 @@ func (m *Mpdv)SendPayment(amt utils.Amount, from, to utils.RouterID) (
 	err = m.UpdateWeights(paths, amts)
 	for i, path := range paths {
 		if amts[i] != 0 {
-	metiric.OperationNum += int64(len(path)-1)
+			metiric.OperationNum += int64(len(path)-1)
 			if len(path) > metiric.MaxPathLengh {
 				metiric.MaxPathLengh = len(path)
 			}
@@ -157,7 +180,7 @@ func (m *Mpdv) linearProgram (amt utils.Amount, paths []utils.Path,
 		lp.SetColBnds(i+1, glpk.LO, 0.0, 0.0)
 	}
 
-	// 费用最低
+	// TODO(xuehan): 费用最低
 	for j, path := range paths {
 		lp.SetObjCoef(j+1, float64(len(path)))
 	}

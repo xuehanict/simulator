@@ -340,7 +340,7 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 }
 
 func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
-	logName := fmt.Sprintf("SM_%v", len(trans)) + other
+	logName := fmt.Sprintf("MPDV_%v_", len(trans)) + other
 
 	log := initLoger(logName)
 	totalAmt := utils.Amount(0)

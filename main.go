@@ -23,7 +23,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "try",
+			Value: "mpdv",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -117,7 +117,7 @@ func main() {
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			trans = trans[0:tranNum]
 			g := utils.GetGraph("./data")
-		 	err := g.LoadDistances("ripple_dis")
+		 	err := g.LoadDistances("./data/finalSets/static/ripple_dis")
 			if err != nil {
 				fmt.Printf("load distance faced error")
 			}
