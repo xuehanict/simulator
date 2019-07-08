@@ -309,15 +309,17 @@ func (g *Graph)GetFee(path Path, amt Amount) Amount {
 
 func (g *Graph) StoreDistances(fileName string, threadNum int) error {
 	wg := sync.WaitGroup{}
-	splitNum := len(g.Nodes) / threadNum
+	tryNodes := g.Nodes[0:1000]
+
+	splitNum := len(tryNodes) / threadNum
 	lock := sync.Mutex{}
 	num := 0
 	for i := 0; i < threadNum;  {
 		wg.Add(1)
 		go func(n int) {
-			calSet := g.Nodes[n*splitNum:(n+1)*splitNum]
-			if i == threadNum -1 {
-				calSet = append(calSet, g.Nodes[(n+1)*splitNum:len(g.Nodes)]...)
+			calSet := tryNodes[n*splitNum:(n+1)*splitNum]
+			if n == threadNum -1 {
+				calSet = append(calSet, tryNodes[(n+1)*splitNum:]...)
 			}
 			for _, node := range calSet {
 				_, distances := Dijkstra(g.Nodes, node.ID)
@@ -333,14 +335,14 @@ func (g *Graph) StoreDistances(fileName string, threadNum int) error {
 	}
 	wg.Wait()
 
-	fileObj,err := os.OpenFile(fileName,os.O_RDWR|os.O_CREATE,0644)
+	fileObj,err := os.OpenFile(fileName,os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
 	if err!= nil {
 		return err
 	}
 	defer fileObj.Close()
 
 	writeObj := bufio.NewWriter(fileObj)
-	for _, node := range g.Nodes {
+	for _, node := range tryNodes {
 		//使用Write方法,需要使用Writer对象的Flush方法将buffer中的数据刷到磁盘
 		buf := make([]byte, len(g.Nodes))
 		for i:=0; i<len(g.Nodes); i++ {

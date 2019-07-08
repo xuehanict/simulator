@@ -5,6 +5,7 @@ import (
 	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/landmark"
 	"github.com/lightningnetwork/simulator/mara"
+	"github.com/lightningnetwork/simulator/mpdv"
 	"github.com/lightningnetwork/simulator/spider"
 	"github.com/lightningnetwork/simulator/utils"
 
@@ -116,9 +117,12 @@ func main() {
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			trans = trans[0:tranNum]
 			g := utils.GetGraph("./data")
-
-
-
+		 	err := g.LoadDistances("dis")
+			if err != nil {
+				fmt.Printf("load distance faced error")
+			}
+		 	m := mpdv.NewMpdv(g, 100, 0.1)
+			MpdvEval(m, 1000, trans, "tr2")
 
 		case "try":
 			/*
@@ -126,11 +130,13 @@ func main() {
 			if err != nil {
 				return err
 			}
-			 */
+			*/
 
 
-			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-5.txt")
+			//trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-5.txt")
 			g := utils.GetGraph("./data")
+			g.StoreDistances("ripple_dis", 60)
+			/*
 			m := &mara.Mara{
 				Graph:g,
 				MaxAddLength: 2,
@@ -138,6 +144,7 @@ func main() {
 				NextHopBound: 100,
 			}
 			testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
+			*/
 		}
 		return nil
 	}

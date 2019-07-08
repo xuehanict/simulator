@@ -17,12 +17,14 @@ type Mpdv struct {
 	amtRate utils.Amount
 }
 
-func (m *Mpdv)InitTable(dests []utils.RouterID) {
+func (m *Mpdv)ResetTable(dests []utils.RouterID) {
 	table := make(map[utils.RouterID]map[utils.RouterID]map[utils.RouterID]int)
 
+	/*
 	for _, dest := range dests {
 		m.SPTs[dest], m.Distance[dest] = utils.Dijkstra(m.Nodes, dest)
 	}
+	 */
 
 	// 对每个结点构建路由表
 	for _, node := range m.Nodes {
@@ -39,11 +41,6 @@ func (m *Mpdv)InitTable(dests []utils.RouterID) {
 	}
 	m.table = table
 }
-
-func (m *Mpdv)ResetTable(dests []utils.RouterID)  {
-
-}
-
 
 func (m *Mpdv)findPaths(src, dest utils.RouterID, amt utils.Amount,
 	metric *utils.Metrics) ([]utils.Path, error) {
