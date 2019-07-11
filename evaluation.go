@@ -353,9 +353,11 @@ func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
 	totalMaxLength := 0.0
 	totalFees := utils.Amount(0)
 
+	fmt.Printf("begin get dests\n")
 	_, dests := utils.GetSdrAndRecr(trans[0:epoch])
+	fmt.Printf("get dest done \n")
 	m.ResetTable(dests)
-
+	fmt.Printf("reset table done\n")
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum++

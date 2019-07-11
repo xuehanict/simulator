@@ -1,6 +1,7 @@
 package mpdv
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
 	"testing"
 )
@@ -12,8 +13,18 @@ func TestMpdv_SendPayment(t *testing.T) {
 	}
 
 	m := NewMpdv(g, 100, 0.1)
-	m.initTable([]utils.RouterID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
-	_, err = m.SendPayment(20, 2, 7)
+	m.InitTable(map[utils.RouterID]struct{}{
+		1: {},
+		2: {},
+		3: {},
+		4: {},
+		5: {},
+		6: {},
+		7: {},
+		8: {},
+	})
+	metric, err := m.SendPayment(20, 1, 4)
+	spew.Dump(metric)
 	if err != nil {
 		t.Fatal(err)
 	}

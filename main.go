@@ -118,11 +118,17 @@ func main() {
 			trans = trans[0:tranNum]
 			g := utils.GetGraph("./data")
 			_, dests := utils.GetSdrAndRecr(trans)
+
 		 	err := g.LoadDistances("./data/finalSets/static/ripple_dis", dests)
 			if err != nil {
-				fmt.Printf("load distance faced error")
+				fmt.Printf("load distance faced error\n")
+			} else {
+				fmt.Printf("load distance success\n")
 			}
-		 	m := mpdv.NewMpdv(g, 100, 0.1)
+
+		 	m := mpdv.NewMpdv(g, 5, 0.1)
+		 	//m.InitTable(dests)
+		 	fmt.Printf("new mpdv done\n")
 			MpdvEval(m, 1000, trans, "tr2")
 
 		case "try":
@@ -132,7 +138,6 @@ func main() {
 				return err
 			}
 			*/
-
 
 			//trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-5.txt")
 			g := utils.GetGraph("./data")

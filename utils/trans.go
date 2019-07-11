@@ -98,7 +98,7 @@ func GetSdrAndRecr(trans []Tran) (map[RouterID]struct{},
 	r := make(map[RouterID]struct{})
 	for _, tran := range trans {
 		s[RouterID(tran.Src)] = struct{}{}
-		r[RouterID(tran.Src)] = struct{}{}
+		r[RouterID(tran.Dest)] = struct{}{}
 	}
 	return s, r
 }

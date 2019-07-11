@@ -42,17 +42,17 @@ func (m *Mpdv)ResetTable(dests map[utils.RouterID]struct{}) {
 	m.table = table
 }
 
-func (m *Mpdv)initTable(dests []utils.RouterID) {
+func (m *Mpdv)InitTable(dests  map[utils.RouterID]struct{}) {
 	table := make(map[utils.RouterID]map[utils.RouterID]map[utils.RouterID]int)
 
-	for _, dest := range dests {
+	for dest := range dests {
 		m.SPTs[dest], m.Distance[dest] = utils.Dijkstra(m.Nodes, dest)
 	}
 
 	// 对每个结点构建路由表
 	for _, node := range m.Nodes {
 		table[node.ID] = make(map[utils.RouterID]map[utils.RouterID]int)
-		for _, dest := range dests {
+		for dest := range dests {
 			table[node.ID][dest] = make(map[utils.RouterID]int)
 			for _, nei := range node.Neighbours {
 				// 同样距离的结点或者小距离的结点才可能作为下一跳
@@ -96,6 +96,7 @@ func (m *Mpdv)nextHop(current, dest utils.RouterID, amt utils.Amount,
 			current:  current,
 			parents:  nextHops,
 			channels: m.Channels,
+			dis: m.Distance[current],
 		}
 		sort.Sort(sorter)
 
@@ -121,9 +122,12 @@ func (m *Mpdv)nextHop(current, dest utils.RouterID, amt utils.Amount,
 func (m *Mpdv)SendPayment(amt utils.Amount, from, to utils.RouterID) (
 	*utils.Metrics, error) {
 	metiric := &utils.Metrics{0,0,0,0}
+	if amt < 0.000001 {
+		return metiric,nil
+	}
 	paths,err := m.findPaths(from, to, amt, metiric)
-	if err != nil {
-		return metiric, fmt.Errorf("routing failed :%s", err.Error())
+	if len(paths) == 0 {
+		return metiric, fmt.Errorf("routing failed")
 	}
 	//spew.Dump(paths)
 	amts, err := m.allocMoney(amt, paths)
@@ -228,6 +232,7 @@ type parentSorter struct {
 	current  utils.RouterID
 	parents  []utils.RouterID
 	channels map[string]*utils.Link
+	dis map[utils.RouterID]float64
 }
 
 func (s parentSorter) Len() int {
@@ -237,7 +242,13 @@ func (s parentSorter) Len() int {
 func (s parentSorter) Less(i, j int) bool {
 	vi := utils.GetLinkValue(s.current, utils.RouterID(i), s.channels)
 	vj := utils.GetLinkValue(s.current, utils.RouterID(j), s.channels)
-	return vi > vj
+
+	if s.dis[utils.RouterID(i)] < s.dis[utils.RouterID(j)] {
+		return true
+	} else if s.dis[utils.RouterID(i)] == s.dis[utils.RouterID(j)] {
+		return vi > vj
+	}
+	return false
 }
 
 func (s parentSorter) Swap(i, j int) {
