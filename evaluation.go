@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/lightningnetwork/simulator/flash"
 	"github.com/lightningnetwork/simulator/landmark"
@@ -171,6 +172,14 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 	totalFees := utils.Amount(0)
 	totalNum := 0
 
+	fileObj,err := os.OpenFile("sp-success-trans.txt",
+		os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
+	if err!= nil {
+		return
+	}
+	defer fileObj.Close()
+	writeObj := bufio.NewWriter(fileObj)
+
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum++
@@ -183,6 +192,10 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 			totalMaxLength += float64(metric.MaxPathLengh)
 			totalFees += metric.Fees
 			totalOperation += metric.OperationNum
+			target := fmt.Sprintf("%v %v %v\n", tran.Src, tran.Dest, tran.Val)
+			if _, err := writeObj.Write([]byte(target)); err == nil {
+				if err := writeObj.Flush(); err != nil {panic(err)}
+			}
 		}
 		log.WithFields(logrus.Fields{
 			"success":          successNum,
@@ -197,6 +210,20 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 			"averageOperation": float64(totalOperation) / float64(successNum),
 			"averageFees":      float64(totalFees) / float64(successAmt),
 		}).Trace("execute a payment.")
+	}
+
+	fileObj_,err := os.OpenFile("sp-channels.txt",os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
+	if err!= nil {
+		return
+	}
+	defer fileObj_.Close()
+
+	writeObj_ := bufio.NewWriter(fileObj_)
+	for _, link := range s.Channels {
+		target := fmt.Sprintf("%v %v %v %v\n",link.Part1, link.Part2, link.Val1, link.Val2)
+		if _,err := writeObj_.Write([]byte(target));err == nil {
+			if  err := writeObj_.Flush(); err != nil {panic(err)}
+		}
 	}
 }
 
@@ -309,6 +336,14 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 	totalMaxLength := 0.0
 	totalFees := utils.Amount(0)
 
+	fileObj,err := os.OpenFile("sm-success-trans.txt",
+		os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
+	if err!= nil {
+		return
+	}
+	defer fileObj.Close()
+	writeObj := bufio.NewWriter(fileObj)
+
 	for _, tran := range trans {
 		totalAmt += utils.Amount(tran.Val)
 		totalNum++
@@ -322,6 +357,11 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 			totalMaxLength += float64(metric.MaxPathLengh)
 			totalFees += metric.Fees
 			totalOperation += metric.OperationNum
+
+			target := fmt.Sprintf("%v %v %v\n", tran.Src, tran.Dest, tran.Val)
+			if _, err := writeObj.Write([]byte(target)); err == nil {
+				if err := writeObj.Flush(); err != nil {panic(err)}
+			}
 		}
 		log.WithFields(logrus.Fields{
 			"success":          successNum,
@@ -336,6 +376,20 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 			"averageOperation": float64(totalOperation) / successNum,
 			"averageFees":      totalFees / successAmt,
 		}).Trace("execute a payment.")
+	}
+
+	fileObj_,err := os.OpenFile("sm-channels.txt",os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
+	if err!= nil {
+		return
+	}
+	defer fileObj_.Close()
+
+	writeObj_ := bufio.NewWriter(fileObj_)
+	for _, link := range s.Channels {
+		target := fmt.Sprintf("%v %v %v %v\n",link.Part1, link.Part2, link.Val1, link.Val2)
+		if _,err := writeObj_.Write([]byte(target));err == nil {
+			if  err := writeObj_.Flush(); err != nil {panic(err)}
+		}
 	}
 }
 
