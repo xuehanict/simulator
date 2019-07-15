@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-
-
 func TestParseLightningGraph(t *testing.T) {
 	graph, err := ParseLightningGraph("../data/lightning/testnetgraph.json")
 	if err != nil {
@@ -16,12 +14,19 @@ func TestParseLightningGraph(t *testing.T) {
 	spew.Dump(len(graph.Nodes))
 	spew.Dump(len(graph.Channels))
 
-	graph.CutOneDegree()
-	graph.ConvertToSeriesID()
+	graph.CutOneDegree(2)
+	//graph.ConvertToSeriesID()
 
 	spew.Dump(len(graph.Nodes))
-	spew.Dump(len(graph.Channels))
-	spew.Dump(graph.Channels)
+	graph.CutOneDegree(2)
+	spew.Dump(len(graph.Nodes))
+	graph.CutOneDegree(2)
+	spew.Dump(len(graph.Nodes))
+	graph.CutOneDegree(2)
+	spew.Dump(len(graph.Nodes))
+
+	//spew.Dump(len(graph.Channels))
+	//spew.Dump(graph.Channels)
 
 }
 
@@ -34,9 +39,3 @@ func TestGetTrans(t *testing.T) {
 	}
 	//spew.Dump(trans)
 }
-
-
-
-
-
-

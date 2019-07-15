@@ -6,23 +6,23 @@ import (
 	"time"
 )
 
-func (g *Graph)CutOneDegree() int {
+func (g *Graph) CutOneDegree(i int) int {
 	nodesToDelete := make(map[RouterID]struct{})
 	for _, n := range g.Nodes {
-		if len(n.Neighbours) < 4 {
-			nodesToDelete[n.ID]= struct{}{}
+		if len(n.Neighbours) < i {
+			nodesToDelete[n.ID] = struct{}{}
 		}
 	}
 
 	fmt.Printf("node to delete length is %v\n", len(nodesToDelete))
-	for id := range g.Nodes  {
+	for id := range g.Nodes {
 		if _, ok := nodesToDelete[id]; ok {
 			delete(g.Nodes, id)
 		}
 	}
 	fmt.Printf("remove node done\n")
 
-	for _, node := range g.Nodes  {
+	for _, node := range g.Nodes {
 		for nToD := range nodesToDelete {
 			node.RemoveNei(nToD)
 		}
@@ -30,7 +30,7 @@ func (g *Graph)CutOneDegree() int {
 	return len(nodesToDelete)
 }
 
-func (g *Graph)ConvertToSeriesID() map[RouterID]RouterID {
+func (g *Graph) ConvertToSeriesID() map[RouterID]RouterID {
 	i := RouterID(0)
 	IDMap := make(map[RouterID]RouterID)
 	finalNodes := make(map[RouterID]*Node)
@@ -60,21 +60,21 @@ func (g *Graph)ConvertToSeriesID() map[RouterID]RouterID {
 		mapped1 := IDMap[link.Part1]
 		mapped2 := IDMap[link.Part2]
 		linkKey := GetLinkKey(mapped1, mapped2)
-		linkValue := (link.Val2 + link.Val1)/2
-		if mapped1 < mapped2{
+		linkValue := (link.Val2 + link.Val1) / 2
+		if mapped1 < mapped2 {
 			newLink := &Link{
 				Part1: mapped1,
 				Part2: mapped2,
-				Val1: linkValue,
-				Val2: linkValue,
+				Val1:  linkValue,
+				Val2:  linkValue,
 			}
 			channels[linkKey] = newLink
 		} else {
-			newLink := &Link {
+			newLink := &Link{
 				Part1: mapped2,
 				Part2: mapped1,
-				Val1: linkValue,
-				Val2: linkValue,
+				Val1:  linkValue,
+				Val2:  linkValue,
 			}
 			channels[linkKey] = newLink
 		}
@@ -87,7 +87,7 @@ func (g *Graph)ConvertToSeriesID() map[RouterID]RouterID {
 func RandomTrans(trans []Tran, IDMap map[RouterID]RouterID, transNum int) []Tran {
 	resTrans := make([]Tran, 0)
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; len(resTrans)<transNum; i++ {
+	for i := 0; len(resTrans) < transNum; i++ {
 		tran := trans[rand.Intn(len(trans))]
 		if _, ok := IDMap[RouterID(tran.Src)]; !ok {
 			continue
@@ -97,13 +97,11 @@ func RandomTrans(trans []Tran, IDMap map[RouterID]RouterID, transNum int) []Tran
 		}
 
 		newTran := Tran{
-			Src: int(IDMap[RouterID(tran.Src)]),
+			Src:  int(IDMap[RouterID(tran.Src)]),
 			Dest: int(IDMap[RouterID(tran.Dest)]),
-			Val: tran.Val,
+			Val:  tran.Val,
 		}
 		resTrans = append(resTrans, newTran)
 	}
 	return resTrans
 }
-
-

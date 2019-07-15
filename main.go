@@ -23,7 +23,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "ripple",
+			Value: "lightning",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -160,10 +160,11 @@ func main() {
 
 			fmt.Printf("start test\n")
 			g := utils.GetGraph("./data")
-			oriTrans,_ := utils.GenerateTransFromPath("data/finalSets/static/")
+			utils.RanddomFeeRate(g.Channels)
+			oriTrans, _ := utils.GenerateTransFromPath("data/finalSets/static/")
 			fmt.Printf("origin trans length is %v", len(oriTrans))
 			for {
-				if g.CutOneDegree() == 0 {
+				if g.CutOneDegree(4) == 0 {
 					break
 				}
 			}
@@ -220,13 +221,19 @@ func main() {
 
 		case "lightning":
 			fmt.Printf("start test\n")
-			g, _ := utils.ParseLightningGraph("./data")
-			trans,_ := utils.GetLightningTrans(len(g.Nodes),10000,
-				"data/ripple/ripple_val.csv","data/lightning/BitcoinVal.txt" )
+			g, _ := utils.ParseLightningGraph("./data/lightning/testnetgraph.json")
+			g.CutOneDegree(2)
+			g.CutOneDegree(2)
+			g.CutOneDegree(2)
+			g.ConvertToSeriesID()
+			trans, _ := utils.GetLightningTrans(len(g.Nodes), 10000,
+				"data/ripple/ripple_val.csv", "data/lightning/BitcoinVal.txt")
 			backChannels := utils.CopyChannels(g.Channels)
 
 			// sm测试
 			fmt.Printf("sm start teset\n")
+			//g.CutOneDegree(2)
+
 			sm := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
 			SMEval(sm, trans, "random-l")
 
@@ -241,9 +248,9 @@ func main() {
 			g.Channels = utils.CopyChannels(backChannels)
 			m := &mara.Mara{
 				Graph:        g,
-				MaxAddLength: 2,
+				MaxAddLength: 4,
 				AmountRate:   0.1,
-				NextHopBound: 100,
+				NextHopBound: 50,
 			}
 			MaraEval(m, trans, mara.MARA_MC, "random-l")
 

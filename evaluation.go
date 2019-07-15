@@ -16,7 +16,7 @@ import (
 )
 
 func initLoger(str string) *logrus.Logger {
-	file := "logs/" + str +".sum" //文件名
+	file := "logs/" + str + ".sum" //文件名
 	summaryLogFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
@@ -50,8 +50,8 @@ func initLoger(str string) *logrus.Logger {
 func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 
 	logName := fmt.Sprintf("MARA_%v_%v_%v_%v",
-		m.MaxAddLength, m.AmountRate,m.NextHopBound, len(trans))
-	log := initLoger(logName+other)
+		m.MaxAddLength, m.AmountRate, m.NextHopBound, len(trans))
+	log := initLoger(logName + other)
 	backupChannelBase := utils.CopyChannels(m.Channels)
 
 	total := 0.0
@@ -97,8 +97,8 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"to":               tran.Dest,
 				"amt":              tran.Val,
 				"pathN":            pathN,
-				"totalVolumn": 		totalVolumn,
-				"successVolumn":	successVolumn,
+				"totalVolumn":      totalVolumn,
+				"successVolumn":    successVolumn,
 				"usedN":            usedN,
 				"totalProbe":       totalProbe,
 				"averageMaxLen":    totalMaxLength / success,
@@ -129,14 +129,13 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"averageMaxLen":    totalMaxLength / success,
 				"averageOperation": float64(totalOperation) / success,
 				"averageFees":      float64(totalFees) / successVolumn,
-				"totalVolumn": 		totalVolumn,
-				"successVolumn":	successVolumn,
+				"totalVolumn":      totalVolumn,
+				"successVolumn":    successVolumn,
 			}).Trace("execute a payment.")
 		}
 
 		if total == 5000 {
 			log.Trace("execute a round")
-			break
 		}
 	}
 
@@ -144,17 +143,17 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 	m.Channels = utils.CopyChannels(backupChannelBase)
 
 	log.WithFields(logrus.Fields{
-		"pathLengthBound": m.MaxAddLength,
-		"amountLBrate":    m.AmountRate,
-		"averageAllpath":  pathNumTotal / success,
-		"averageUsedPath": usedNumTotal / success,
+		"pathLengthBound":  m.MaxAddLength,
+		"amountLBrate":     m.AmountRate,
+		"averageAllpath":   pathNumTotal / success,
+		"averageUsedPath":  usedNumTotal / success,
 		"totalProbe":       totalProbe,
 		"averageFees":      float64(totalFees) / successVolumn,
 		"averageOperation": float64(totalOperation) / success,
 		"averageMaxLen":    totalMaxLength / success,
-		"totalVolumn": 		totalVolumn,
-		"successVolumn":	successVolumn,
-		"sussessRate":     success / total,
+		"totalVolumn":      totalVolumn,
+		"successVolumn":    successVolumn,
+		"sussessRate":      success / total,
 	}).Infof("a round test result shows")
 }
 
@@ -172,9 +171,9 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 	totalFees := utils.Amount(0)
 	totalNum := 0
 
-	fileObj,err := os.OpenFile("sp-success-trans.txt",
-		os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
-	if err!= nil {
+	fileObj, err := os.OpenFile("sp-success-trans.txt",
+		os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
 		return
 	}
 	defer fileObj.Close()
@@ -194,7 +193,9 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 			totalOperation += metric.OperationNum
 			target := fmt.Sprintf("%v %v %v\n", tran.Src, tran.Dest, tran.Val)
 			if _, err := writeObj.Write([]byte(target)); err == nil {
-				if err := writeObj.Flush(); err != nil {panic(err)}
+				if err := writeObj.Flush(); err != nil {
+					panic(err)
+				}
 			}
 		}
 		log.WithFields(logrus.Fields{
@@ -212,22 +213,24 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 		}).Trace("execute a payment.")
 	}
 
-	fileObj_,err := os.OpenFile("sp-channels.txt",os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
-	if err!= nil {
+	fileObj_, err := os.OpenFile("sp-channels.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
 		return
 	}
 	defer fileObj_.Close()
 
 	writeObj_ := bufio.NewWriter(fileObj_)
 	for _, link := range s.Channels {
-		target := fmt.Sprintf("%v %v %v %v\n",link.Part1, link.Part2, link.Val1, link.Val2)
-		if _,err := writeObj_.Write([]byte(target));err == nil {
-			if  err := writeObj_.Flush(); err != nil {panic(err)}
+		target := fmt.Sprintf("%v %v %v %v\n", link.Part1, link.Part2, link.Val1, link.Val2)
+		if _, err := writeObj_.Write([]byte(target)); err == nil {
+			if err := writeObj_.Flush(); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
 
-func FlashEval(f *flash.Flash, trans []utils.Tran,other string) {
+func FlashEval(f *flash.Flash, trans []utils.Tran, other string) {
 	logName := fmt.Sprintf("FLASH_%v", len(trans)) + other
 	log := initLoger(logName)
 
@@ -336,9 +339,9 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 	totalMaxLength := 0.0
 	totalFees := utils.Amount(0)
 
-	fileObj,err := os.OpenFile("sm-success-trans.txt",
-		os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
-	if err!= nil {
+	fileObj, err := os.OpenFile("sm-success-trans.txt",
+		os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
 		return
 	}
 	defer fileObj.Close()
@@ -360,7 +363,9 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 
 			target := fmt.Sprintf("%v %v %v\n", tran.Src, tran.Dest, tran.Val)
 			if _, err := writeObj.Write([]byte(target)); err == nil {
-				if err := writeObj.Flush(); err != nil {panic(err)}
+				if err := writeObj.Flush(); err != nil {
+					panic(err)
+				}
 			}
 		}
 		log.WithFields(logrus.Fields{
@@ -378,22 +383,24 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 		}).Trace("execute a payment.")
 	}
 
-	fileObj_,err := os.OpenFile("sm-channels.txt",os.O_RDWR|os.O_CREATE|os.O_APPEND,0644)
-	if err!= nil {
+	fileObj_, err := os.OpenFile("sm-channels.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
 		return
 	}
 	defer fileObj_.Close()
 
 	writeObj_ := bufio.NewWriter(fileObj_)
 	for _, link := range s.Channels {
-		target := fmt.Sprintf("%v %v %v %v\n",link.Part1, link.Part2, link.Val1, link.Val2)
-		if _,err := writeObj_.Write([]byte(target));err == nil {
-			if  err := writeObj_.Flush(); err != nil {panic(err)}
+		target := fmt.Sprintf("%v %v %v %v\n", link.Part1, link.Part2, link.Val1, link.Val2)
+		if _, err := writeObj_.Write([]byte(target)); err == nil {
+			if err := writeObj_.Flush(); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
 
-func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
+func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string) {
 	logName := fmt.Sprintf("MPDV_%v_", len(trans)) + other
 
 	log := initLoger(logName)
@@ -427,12 +434,12 @@ func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
 			totalOperation += metric.OperationNum
 		}
 
-		if totalNum % epoch == 0 {
-			if len(trans) - totalNum < epoch {
+		if totalNum%epoch == 0 {
+			if len(trans)-totalNum < epoch {
 				_, dests := utils.GetSdrAndRecr(trans[totalNum:])
 				m.ResetTable(dests)
 			} else {
-				_, dests := utils.GetSdrAndRecr(trans[totalNum:totalNum+epoch])
+				_, dests := utils.GetSdrAndRecr(trans[totalNum : totalNum+epoch])
 				m.ResetTable(dests)
 			}
 		}
@@ -451,6 +458,3 @@ func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string)  {
 		}).Trace("execute a payment.")
 	}
 }
-
-
-
