@@ -270,10 +270,14 @@ func (m *Mara) getRoutesWithBond(src, dest utils.RouterID,
 		case MARA_SPE:
 			m.DAGs[dest] = m.MaraSpeOpt(dest)
 		case MARA_SPT:
-			m.DAGs[dest], m.Distance[dest]  = utils.Dijkstra(m.Nodes, dest)
+			m.DAGs[dest], m.Distance[dest] = utils.Dijkstra(m.Nodes, dest)
 		}
 	}
+
 	finalLen := m.MaxAddLength + m.Distance[dest][src]
+	if m.Distance[dest][src] > 10 {
+		finalLen = 2
+	}
 	//fmt.Printf("DAG构架能完成\n")
 	fmt.Printf("maxLength:%v\n", finalLen)
 	return m.nextHop(nil, src, dest, amount,
@@ -507,15 +511,14 @@ func (m *Mara) linearProgram(
 		lp.SetColBnds(i+1, glpk.DB, 0.0, float64(min))
 	}
 	/*
-	for j, route := range routes {
-		lp.SetObjCoef(j+1, float64(len(route)))
-	}
+		for j, route := range routes {
+			lp.SetObjCoef(j+1, float64(len(route)))
+		}
 	*/
 
 	for j, route := range routes {
 		lp.SetObjCoef(j+1, float64(m.GetFee(route, utils.Amount(1))))
 	}
-
 
 	ind := []int32{0}
 	for i := range routeMins {
@@ -587,9 +590,9 @@ func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*utils.Node) *ut
 	return dag
 }
 
-func (m *Mara)TryPay(src, dest utils.RouterID, algo int,
-	amount utils.Amount) ([]utils.Path, []utils.Amount, error){
-	metric  := &utils.Metrics{}
+func (m *Mara) TryPay(src, dest utils.RouterID, algo int,
+	amount utils.Amount) ([]utils.Path, []utils.Amount, error) {
+	metric := &utils.Metrics{}
 	routes := m.getRoutesWithBond(src, dest, algo, amount, metric)
 	if len(routes) == 0 {
 		return nil, nil, &PaymentError{
