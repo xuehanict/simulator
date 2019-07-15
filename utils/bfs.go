@@ -4,7 +4,7 @@ import (
 	"container/list"
 )
 
-func BfsPath (nodes []*Node, src, dest RouterID, checkCap bool,
+func BfsPath (nodes map[RouterID]*Node, src, dest RouterID, checkCap bool,
 	linkBase map[string]*Link) Path{
 	queue := list.New()
 	queue.PushBack(nodes[src])

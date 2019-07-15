@@ -37,12 +37,12 @@ type Node struct {
 
 type DAG struct {
 	Root    *Node
-	Vertexs []*Node
+	Vertexs map[RouterID]*Node
 	//edges   []*Link
 }
 
 type Graph struct {
-	Nodes []*Node
+	Nodes map[RouterID]*Node
 	// 图的channels信息
 	Channels map[string]*Link
 	// 路由所需要的DAG，路由时是一步步往parents的方向传递路由包和支付请求
@@ -56,7 +56,7 @@ type Graph struct {
 func NewDAG(root *Node, len int) *DAG {
 	return &DAG{
 		Root:    root,
-		Vertexs: make([]*Node, len),
+		Vertexs: make(map[RouterID]*Node),
 		//edges:   make([]*Link, 0),
 	}
 }
@@ -89,8 +89,8 @@ func (n *Node) checkChild(id RouterID) bool {
 	return false
 }
 
-func CopyNodes(src []*Node) []*Node {
-	res := make([]*Node, len(src))
+func CopyNodes(src map[RouterID]*Node) map[RouterID]*Node {
+	res := make(map[RouterID]*Node)
 	for id, node := range src {
 		n := &Node{
 			ID:         RouterID(id),
@@ -260,7 +260,7 @@ func GetGraph(data string) *Graph {
 		links[GetLinkKey(link.Part1, link.Part2)] = link
 	}
 
-	nodes := make([]*Node, 67149)
+	nodes := make(map[RouterID]*Node)
 	for i := 0; i < 67149; i++ {
 		router := &Node{
 			ID:         RouterID(i),
@@ -309,7 +309,12 @@ func (g *Graph)GetFee(path Path, amt Amount) Amount {
 
 func (g *Graph) StoreDistances(fileName string, threadNum int) error {
 	wg := sync.WaitGroup{}
-	tryNodes := g.Nodes[1000:10000]
+	tryNodes := make([]*Node,0)
+	for id := range g.Nodes {
+		if id <10000 && id >= 1000 {
+			tryNodes = append(tryNodes, g.Nodes[id])
+		}
+	}
 
 	splitNum := len(tryNodes) / threadNum
 	lock := sync.Mutex{}

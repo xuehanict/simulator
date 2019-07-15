@@ -38,7 +38,7 @@ func ParseTestJson(filePath string) (*Graph, error) {
 		fmt.Printf("%v", err)
 		os.Exit(1)
 	}
-	nodes := make([]*Node, len(g.Nodes))
+	nodes := make(map[RouterID]*Node)
 	edges := make(map[string]*Link)
 
 	for _, n := range g.Nodes {

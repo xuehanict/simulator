@@ -52,7 +52,7 @@ func GenerateTrans(filePath string) []Tran {
 	return trans
 }
 
-func generateTransFromPath (path string) ([]Tran, error) {
+func GenerateTransFromPath (path string) ([]Tran, error) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func generateTransFromPath (path string) ([]Tran, error) {
 }
 
 func SampleTrans(dirPath string, num int) ([]Tran, error) {
-	trans, err := generateTransFromPath(dirPath)
+	trans, err := GenerateTransFromPath(dirPath)
 	if err != nil {
 		return nil, err
 	}

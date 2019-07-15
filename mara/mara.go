@@ -561,7 +561,7 @@ func (m *Mara) linearProgram(
 	return result, err
 }
 
-func getDAG(ordering []utils.RouterID, nodes []*utils.Node) *utils.DAG {
+func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*utils.Node) *utils.DAG {
 
 	mapOrdering := make(map[utils.RouterID]int, len(ordering))
 	for index, id := range ordering {

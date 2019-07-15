@@ -27,7 +27,7 @@ func TestGraph_StoreDistances(t *testing.T) {
 	}
 	dis := g.Distance
 	t.Log(dis)
-	err = g.LoadDistances("../data/finalSets/static/dis")
+	err = g.LoadDistances("../data/finalSets/static/dis", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

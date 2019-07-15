@@ -5,3 +5,4 @@
 *.sum
 ripple_dis
 
+!/data/lightning/BitcoinVal.txt

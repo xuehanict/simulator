@@ -20,7 +20,7 @@ func (d *disElement) Key() float64 {
 	return d.distance
 }
 
-func Dijkstra(nodes []*Node, start RouterID) (*DAG, map[RouterID]float64) {
+func Dijkstra(nodes map[RouterID]*Node, start RouterID) (*DAG, map[RouterID]float64) {
 
 	mNodes := CopyNodes(nodes)
 

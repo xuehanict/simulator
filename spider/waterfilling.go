@@ -56,7 +56,7 @@ func (s *Spider) getPaths(src, dest utils.RouterID, k int) []utils.Path {
 	return paths
 }
 
-func clearEdge(nodes []*utils.Node, path utils.Path) []*utils.Node {
+func clearEdge(nodes map[utils.RouterID]*utils.Node, path utils.Path) map[utils.RouterID]*utils.Node {
 	nodes[path[0]].RemoveNei(nodes[path[1]].ID)
 	for i := 1; i < len(path) - 1; i++ {
 		nodes[path[i]].RemoveNei(nodes[path[i+1]].ID)

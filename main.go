@@ -23,13 +23,18 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "mpdv",
+			Value: "ripple",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
 			Name:  "trans_num",
-			Value: 5000,
+			Value: 10000,
 			Usage: "number of transactions to execute",
+		},
+		cli.StringFlag{
+			Name:  "data",
+			Value: "o",
+			Usage: "data set used to test. r->ripple, l-> lightning, o->origin data",
 		},
 	}
 
@@ -40,9 +45,9 @@ func main() {
 		case "mara":
 			g := utils.GetGraph("./data")
 			m := &mara.Mara{
-				Graph:g,
+				Graph:        g,
 				MaxAddLength: 2,
-				AmountRate: 0.1,
+				AmountRate:   0.1,
 				NextHopBound: 100,
 			}
 			channels := utils.CopyChannels(m.Channels)
@@ -50,7 +55,7 @@ func main() {
 			//MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
 
 			bounds := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
-			amtRates := []float64{0.05, 0.1, 0.15,0.20, 0.25}
+			amtRates := []float64{0.05, 0.1, 0.15, 0.20, 0.25}
 			for _, bound := range bounds {
 				for _, amtRate := range amtRates {
 					m.NextHopBound = bound
@@ -74,9 +79,9 @@ func main() {
 		case "dijk":
 			g := utils.GetGraph("./data")
 			m := &mara.Mara{
-				Graph:g,
+				Graph:        g,
 				MaxAddLength: 6,
-				AmountRate: 0.05,
+				AmountRate:   0.05,
 				NextHopBound: 100,
 			}
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
@@ -96,15 +101,15 @@ func main() {
 
 			wg := sync.WaitGroup{}
 			calcuN := 0
-			for i:= 0; i < 10; i++ {
+			for i := 0; i < 10; i++ {
 				time.Sleep(time.Millisecond * 100)
-				go func( idx int) {
+				go func(idx int) {
 					wg.Add(1)
-					tmpTrans := trans[idx*tranNum/10:(idx+1)*tranNum/10]
+					tmpTrans := trans[idx*tranNum/10 : (idx+1)*tranNum/10]
 					for _, tran := range tmpTrans {
 						f.AddShortestPathsTest(utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
 						fmt.Printf("算完一个交易路径:%v \n", calcuN)
-						calcuN ++
+						calcuN++
 					}
 					wg.Done()
 				}(i)
@@ -119,38 +124,151 @@ func main() {
 			g := utils.GetGraph("./data")
 			_, dests := utils.GetSdrAndRecr(trans)
 
-		 	err := g.LoadDistances("./data/finalSets/static/ripple_dis", dests)
+			err := g.LoadDistances("./data/finalSets/static/ripple_dis", dests)
 			if err != nil {
 				fmt.Printf("load distance faced error\n")
 			} else {
 				fmt.Printf("load distance success\n")
 			}
 
-		 	m := mpdv.NewMpdv(g, 5, 0.1)
-		 	//m.InitTable(dests)
-		 	fmt.Printf("new mpdv done\n")
+			m := mpdv.NewMpdv(g, 5, 0.1)
+			//m.InitTable(dests)
+			fmt.Printf("new mpdv done\n")
 			MpdvEval(m, 1000, trans, "tr2")
 
 		case "try":
 			/*
-			trans, err := utils.SampleTrans("./data/finalSets/static/", 1000)
-			if err != nil {
-				return err
-			}
+				trans, err := utils.SampleTrans("./data/finalSets/static/", 1000)
+				if err != nil {
+					return err
+				}
 			*/
 
 			//trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-5.txt")
 			g := utils.GetGraph("./data")
 			g.StoreDistances("ripple_dis", 6)
 			/*
+				m := &mara.Mara{
+					Graph:g,
+					MaxAddLength: 2,
+					AmountRate: 0.1,
+					NextHopBound: 100,
+				}
+				testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
+			*/
+		case "ripple":
+
+			fmt.Printf("start test\n")
+			g := utils.GetGraph("./data")
+			oriTrans,_ := utils.GenerateTransFromPath("data/finalSets/static/")
+			fmt.Printf("origin trans length is %v", len(oriTrans))
+			for {
+				if g.CutOneDegree() == 0 {
+					break
+				}
+			}
+			idMap := g.ConvertToSeriesID()
+			trans := utils.RandomTrans(oriTrans, idMap, 10000)
+			backChannels := utils.CopyChannels(g.Channels)
+			fmt.Printf("transaction length is %v", len(trans))
+			//time.Sleep(time.Second * 100)
+
+			// sm测试
+			fmt.Printf("sm start teset\n")
+			sm := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
+			SMEval(sm, trans, "random-r")
+
+			// spider测试
+			fmt.Printf("spider start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
+			sp := spider.NewSpider(g, spider.WATERFIILING, 4)
+			SpiderEval(sp, trans, "random-r")
+
+			// mara测试
+			fmt.Printf("mara start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
 			m := &mara.Mara{
-				Graph:g,
+				Graph:        g,
+				MaxAddLength: 4,
+				AmountRate:   0.1,
+				NextHopBound: 50,
+			}
+			MaraEval(m, trans, mara.MARA_MC, "random-r")
+
+			// flash测试
+			fmt.Printf("flash start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
+			f := flash.NewFlash(g, 20, true)
+			wg := sync.WaitGroup{}
+			calcuN := 0
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * 100)
+				go func(idx int) {
+					wg.Add(1)
+					tmpTrans := trans[idx*tranNum/10 : (idx+1)*tranNum/10]
+					for _, tran := range tmpTrans {
+						f.AddShortestPathsTest(utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
+						fmt.Printf("算完一个交易路径:%v \n", calcuN)
+						calcuN++
+					}
+					wg.Done()
+				}(i)
+			}
+			wg.Wait()
+			fmt.Printf("算完所有路径\n")
+			FlashEval(f, trans, "random-r")
+
+		case "lightning":
+			fmt.Printf("start test\n")
+			g, _ := utils.ParseLightningGraph("./data")
+			trans,_ := utils.GetLightningTrans(len(g.Nodes),10000,
+				"data/ripple/ripple_val.csv","data/lightning/BitcoinVal.txt" )
+			backChannels := utils.CopyChannels(g.Channels)
+
+			// sm测试
+			fmt.Printf("sm start teset\n")
+			sm := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
+			SMEval(sm, trans, "random-l")
+
+			// spider测试
+			fmt.Printf("spider start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
+			sp := spider.NewSpider(g, spider.WATERFIILING, 4)
+			SpiderEval(sp, trans, "random-l")
+
+			// mara测试
+			fmt.Printf("mara start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
+			m := &mara.Mara{
+				Graph:        g,
 				MaxAddLength: 2,
-				AmountRate: 0.1,
+				AmountRate:   0.1,
 				NextHopBound: 100,
 			}
-			testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
-			*/
+			MaraEval(m, trans, mara.MARA_MC, "random-l")
+
+			// flash测试
+			fmt.Printf("flash start teset\n")
+			g.Channels = utils.CopyChannels(backChannels)
+			f := flash.NewFlash(g, 20, true)
+			wg := sync.WaitGroup{}
+			calcuN := 0
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * 100)
+				go func(idx int) {
+					wg.Add(1)
+					tmpTrans := trans[idx*tranNum/10 : (idx+1)*tranNum/10]
+					for _, tran := range tmpTrans {
+						f.AddShortestPathsTest(utils.RouterID(tran.Src), utils.RouterID(tran.Dest))
+						fmt.Printf("算完一个交易路径:%v \n", calcuN)
+						calcuN++
+					}
+					wg.Done()
+				}(i)
+			}
+			wg.Wait()
+			fmt.Printf("算完所有路径\n")
+			FlashEval(f, trans, "random-l")
 		}
 		return nil
 	}
@@ -161,72 +279,72 @@ func main() {
 	}
 }
 
-func testMany(m *mara.Mara, trans []utils.Tran, testNum[]int)  {
+func testMany(m *mara.Mara, trans []utils.Tran, testNum []int) {
 
 	type record struct {
 		paths []utils.Path
-		amts []utils.Amount
-		res bool
+		amts  []utils.Amount
+		res   bool
 	}
 	records := make(map[*utils.Tran]record)
 	probed := 0
 	/*
-	tranNum := len(trans)
+		tranNum := len(trans)
 
-	wg := sync.WaitGroup{}
-	lock := sync.Mutex{}
-	calcuN := 0
-	for i:= 0; i < 10; i++ {
-		time.Sleep(time.Millisecond * 100)
-		go func( idx int) {
-			wg.Add(1)
-			tmpTrans := trans[idx*tranNum/10:(idx+1)*tranNum/10]
-			for _, tran := range tmpTrans {
-				paths, amts, err := m.TryPay(utils.RouterID(tran.Src),
-					utils.RouterID(tran.Dest), mara.MARA_MC, utils.Amount(tran.Val))
-				probed ++
-				fmt.Printf("probe %v\n", probed)
-				if err != nil {
-					lock.Lock()
-					records[&trans[i]] = record{
-						paths: paths,
-						amts: amts,
-						res: false,
+		wg := sync.WaitGroup{}
+		lock := sync.Mutex{}
+		calcuN := 0
+		for i:= 0; i < 10; i++ {
+			time.Sleep(time.Millisecond * 100)
+			go func( idx int) {
+				wg.Add(1)
+				tmpTrans := trans[idx*tranNum/10:(idx+1)*tranNum/10]
+				for _, tran := range tmpTrans {
+					paths, amts, err := m.TryPay(utils.RouterID(tran.Src),
+						utils.RouterID(tran.Dest), mara.MARA_MC, utils.Amount(tran.Val))
+					probed ++
+					fmt.Printf("probe %v\n", probed)
+					if err != nil {
+						lock.Lock()
+						records[&trans[i]] = record{
+							paths: paths,
+							amts: amts,
+							res: false,
+						}
+						lock.Unlock()
+					} else {
+						lock.Lock()
+						records[&trans[i]] = record{
+							paths: paths,
+							amts: amts,
+							res: true,
+						}
+						lock.Unlock()
 					}
-					lock.Unlock()
-				} else {
-					lock.Lock()
-					records[&trans[i]] = record{
-						paths: paths,
-						amts: amts,
-						res: true,
-					}
-					lock.Unlock()
+					calcuN ++
 				}
-				calcuN ++
-			}
-			wg.Done()
-		}(i)
-	}
-	wg.Wait()
-*/
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+	*/
 
 	for i, tran := range trans {
 		paths, amts, err := m.TryPay(utils.RouterID(tran.Src),
 			utils.RouterID(tran.Dest), mara.MARA_MC, utils.Amount(tran.Val))
-		probed ++
+		probed++
 		fmt.Printf("probe %v\n", probed)
 		if err != nil {
 			records[&trans[i]] = record{
 				paths: paths,
-				amts: amts,
-				res: false,
+				amts:  amts,
+				res:   false,
 			}
 		} else {
 			records[&trans[i]] = record{
 				paths: paths,
-				amts: amts,
-				res: true,
+				amts:  amts,
+				res:   true,
 			}
 		}
 	}
@@ -251,4 +369,3 @@ func testMany(m *mara.Mara, trans []utils.Tran, testNum[]int)  {
 		fmt.Printf("total is %v, and conflict is %v\n", num, conflict)
 	}
 }
-
