@@ -168,7 +168,7 @@ func main() {
 					break
 				}
 			}
-			idMap := g.ConvertToSeriesID(true)
+			idMap := g.ConvertToSeriesID(false)
 			trans := utils.RandomTrans(oriTrans, idMap, 10000)
 			backChannels := utils.CopyChannels(g.Channels)
 			fmt.Printf("transaction length is %v", len(trans))

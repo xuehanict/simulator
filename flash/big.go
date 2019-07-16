@@ -67,6 +67,9 @@ func (f *Flash)findPaths(src, dest utils.RouterID, metric *utils.Metrics)(
 
 func (f *Flash) allocMoney (amt utils.Amount, paths []utils.Path) ([]utils.Amount, error) {
 	channels := make(map[string]int)
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("no path found")
+	}
 	for _, path := range paths {
 		for i:=0; i<len(path)-1; i++{
 			if _, ok := channels[utils.GetLinkKey(path[i],path[i+1])]; !ok {
