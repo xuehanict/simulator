@@ -168,7 +168,7 @@ func main() {
 					break
 				}
 			}
-			idMap := g.ConvertToSeriesID()
+			idMap := g.ConvertToSeriesID(true)
 			trans := utils.RandomTrans(oriTrans, idMap, 10000)
 			backChannels := utils.CopyChannels(g.Channels)
 			fmt.Printf("transaction length is %v", len(trans))
@@ -225,7 +225,7 @@ func main() {
 			g.CutOneDegree(2)
 			g.CutOneDegree(2)
 			g.CutOneDegree(2)
-			g.ConvertToSeriesID()
+			g.ConvertToSeriesID(true)
 			trans, _ := utils.GetLightningTrans(len(g.Nodes), 10000,
 				"data/ripple/ripple_val.csv", "data/lightning/BitcoinVal.txt")
 			backChannels := utils.CopyChannels(g.Channels)

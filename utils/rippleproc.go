@@ -30,7 +30,7 @@ func (g *Graph) CutOneDegree(i int) int {
 	return len(nodesToDelete)
 }
 
-func (g *Graph) ConvertToSeriesID() map[RouterID]RouterID {
+func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 	i := RouterID(0)
 	IDMap := make(map[RouterID]RouterID)
 	finalNodes := make(map[RouterID]*Node)
@@ -61,23 +61,31 @@ func (g *Graph) ConvertToSeriesID() map[RouterID]RouterID {
 		mapped2 := IDMap[link.Part2]
 		linkKey := GetLinkKey(mapped1, mapped2)
 		linkValue := (link.Val2 + link.Val1) / 2
+		var newLink *Link
 		if mapped1 < mapped2 {
-			newLink := &Link{
+			newLink = &Link{
 				Part1: mapped1,
 				Part2: mapped2,
 				Val1:  linkValue,
 				Val2:  linkValue,
 			}
-			channels[linkKey] = newLink
+			if !balance {
+				newLink.Val1 = link.Val1
+				newLink.Val2 = link.Val2
+			}
 		} else {
-			newLink := &Link{
+			newLink = &Link{
 				Part1: mapped2,
 				Part2: mapped1,
 				Val1:  linkValue,
 				Val2:  linkValue,
 			}
-			channels[linkKey] = newLink
+			if !balance {
+				newLink.Val2 = link.Val1
+				newLink.Val1 = link.Val2
+			}
 		}
+		channels[linkKey] = newLink
 	}
 	g.Channels = channels
 	g.Nodes = finalNodes

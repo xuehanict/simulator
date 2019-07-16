@@ -50,10 +50,10 @@ func (s *Spider) getPaths(src, dest utils.RouterID, k int) []utils.Path {
 		if path == nil {
 			break
 		}
-		nodes = clearEdge(nodes, path)
 		if len(path) < 2 {
-			continue
+			break
 		}
+		nodes = clearEdge(nodes, path)
 		paths = append(paths, path)
 	}
 	return paths
