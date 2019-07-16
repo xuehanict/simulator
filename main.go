@@ -192,7 +192,7 @@ func main() {
 				Graph:        g,
 				MaxAddLength: 4,
 				AmountRate:   0.1,
-				NextHopBound: 50,
+				NextHopBound: 20,
 			}
 			MaraEval(m, trans, mara.MARA_MC, "random-r")
 
