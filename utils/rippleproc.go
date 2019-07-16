@@ -89,16 +89,24 @@ func RandomTrans(trans []Tran, IDMap map[RouterID]RouterID, transNum int) []Tran
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; len(resTrans) < transNum; i++ {
 		tran := trans[rand.Intn(len(trans))]
-		if _, ok := IDMap[RouterID(tran.Src)]; !ok {
-			continue
-		}
-		if _, ok := IDMap[RouterID(tran.Dest)]; !ok {
-			continue
-		}
+		/*
+			if _, ok := IDMap[RouterID(tran.Src)]; !ok {
+				continue
+			}
+			if _, ok := IDMap[RouterID(tran.Dest)]; !ok {
+				continue
+			}*/
 
+		/*
+			newTran := Tran{
+				Src:  int(IDMap[RouterID(tran.Src)]),
+				Dest: int(IDMap[RouterID(tran.Dest)]),
+				Val:  tran.Val,
+			}
+		*/
 		newTran := Tran{
-			Src:  int(IDMap[RouterID(tran.Src)]),
-			Dest: int(IDMap[RouterID(tran.Dest)]),
+			Src:  tran.Src % len(IDMap),
+			Dest: tran.Dest % len(IDMap),
 			Val:  tran.Val,
 		}
 		resTrans = append(resTrans, newTran)
