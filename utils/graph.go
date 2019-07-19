@@ -32,7 +32,7 @@ type Node struct {
 	ID         RouterID
 	Parents    []RouterID
 	Children   []RouterID
-	Neighbours []RouterID
+	Neighbours map[RouterID]struct{}
 }
 
 type DAG struct {
@@ -63,12 +63,12 @@ func NewDAG(root *Node, len int) *DAG {
 
 func (n *Node) CheckLink(id RouterID) bool {
 	//fmt.Printf("node id is %v", spew.Sdump(n))
-	for _, n := range n.Neighbours {
-		if n == id {
-			return true
-		}
+
+	if _, ok := n.Neighbours[id]; ok {
+		return true
+	} else {
+		return false
 	}
-	return false
 }
 
 func (n *Node) CheckParent(id RouterID) bool {
@@ -104,13 +104,7 @@ func CopyNodes(src map[RouterID]*Node) map[RouterID]*Node {
 }
 
 func (n *Node) RemoveNei(id RouterID) {
-	newNeis := make([]RouterID, 0)
-	for _, nei := range n.Neighbours {
-		if nei != id {
-			newNeis = append(newNeis, nei)
-		}
-	}
-	n.Neighbours = newNeis
+	delete(n.Neighbours, id)
 }
 
 // 支付多条路径
@@ -266,7 +260,7 @@ func GetGraph(data string) *Graph {
 			ID:         RouterID(i),
 			Parents:    make([]RouterID, 0),
 			Children:   make([]RouterID, 0),
-			Neighbours: make([]RouterID, 0),
+			Neighbours: make(map[RouterID]struct{}),
 		}
 		nodes[RouterID(i)] = router
 	}
@@ -278,8 +272,8 @@ func GetGraph(data string) *Graph {
 	sort.Strings(keySlice)
 	for _, key := range keySlice {
 		edge := links[key]
-		nodes[edge.Part1].Neighbours = append(nodes[edge.Part1].Neighbours, edge.Part2)
-		nodes[edge.Part2].Neighbours = append(nodes[edge.Part2].Neighbours, edge.Part1)
+		nodes[edge.Part1].Neighbours[edge.Part2] = struct{}{}
+		nodes[edge.Part2].Neighbours[edge.Part1] = struct{}{}
 	}
 
 	graph := &Graph{

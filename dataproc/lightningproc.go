@@ -1,9 +1,10 @@
-package utils
+package dataproc
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/lightningnetwork/simulator/utils"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -54,7 +55,7 @@ type RoutingPolicy struct {
 	MaxHtlcMsat          string   `protobuf:"varint,6,opt,name=max_htlc_msat,proto3" json:"max_htlc_msat,omitempty"`
 }
 
-func ParseLightningGraph(filePath string) (*Graph, error) {
+func ParseLightningGraph(filePath string) (*utils.Graph, error) {
 	var g ChannelGraph
 	graphJson, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -64,15 +65,15 @@ func ParseLightningGraph(filePath string) (*Graph, error) {
 		return nil, err
 	}
 
-	nodeIDMap := make(map[string]RouterID)
-	nodes := make(map[RouterID]*Node)
-	channels := make(map[string]*Link)
-	index := RouterID(0)
+	nodeIDMap := make(map[string]utils.RouterID)
+	nodes := make(map[utils.RouterID]*utils.Node)
+	channels := make(map[string]*utils.Link)
+	index := utils.RouterID(0)
 	for _, lightNode := range g.Nodes {
 		nodeIDMap[lightNode.PubKey] = index
-		node := &Node{
+		node := &utils.Node{
 			ID: index,
-			Neighbours: make([]RouterID,0),
+			Neighbours: make([]utils.RouterID,0),
 		}
 		nodes[index]=node
 		index++
@@ -81,22 +82,22 @@ func ParseLightningGraph(filePath string) (*Graph, error) {
 	for _, lightEdge := range g.Edges {
 		mapped1 := nodeIDMap[lightEdge.Node1Pub]
 		mapped2 := nodeIDMap[lightEdge.Node2Pub]
-		linkKey := GetLinkKey(mapped1, mapped2)
+		linkKey := utils.GetLinkKey(mapped1, mapped2)
 		capacity, _ :=  strconv.ParseInt(lightEdge.Capacity, 10, 64)
 		if mapped1 < mapped2 {
-			link := &Link{
+			link := &utils.Link{
 				Part1: mapped1,
 				Part2: mapped2,
-				Val1: Amount(capacity)/2,
-				Val2: Amount(capacity)/2,
+				Val1: utils.Amount(capacity)/2,
+				Val2: utils.Amount(capacity)/2,
 			}
 			channels[linkKey] = link
 		} else {
-			link := &Link{
+			link := &utils.Link{
 				Part1: mapped2,
 				Part2: mapped1,
-				Val1: Amount(capacity)/2,
-				Val2: Amount(capacity)/2,
+				Val1: utils.Amount(capacity)/2,
+				Val2: utils.Amount(capacity)/2,
 			}
 			channels[linkKey] = link
 		}
@@ -108,18 +109,18 @@ func ParseLightningGraph(filePath string) (*Graph, error) {
 		nodes[mapped1].Neighbours = append(nodes[mapped1].Neighbours, mapped2)
 		nodes[mapped2].Neighbours = append(nodes[mapped2].Neighbours, mapped1)
 	}
-	return &Graph{
+	return &utils.Graph{
 		Nodes: nodes,
 		Channels:channels,
-		DAGs: map[RouterID]*DAG{},
-		SPTs: map[RouterID]*DAG{},
-		Distance: map[RouterID]map[RouterID]float64{},
+		DAGs: map[utils.RouterID]*utils.DAG{},
+		SPTs: map[utils.RouterID]*utils.DAG{},
+		Distance: map[utils.RouterID]map[utils.RouterID]float64{},
 	}, nil
 }
 
-func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]Tran, error){
+func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]utils.Tran, error){
 	// 先根据ripple的数据生成sender和reeiver对
-	trans := make([]Tran, 0)
+	trans := make([]utils.Tran, 0)
 	if fileObj, err := os.Open(tranPath); err == nil {
 		defer fileObj.Close()
 		reader := bufio.NewReader(fileObj)
@@ -128,7 +129,7 @@ func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]Tra
 				spplieted := strings.Split(string(line), ",")
 				src, _ := strconv.ParseInt(spplieted[0], 10, 32)
 				dest, _ := strconv.ParseInt(spplieted[1], 10, 32)
-				tran := Tran{
+				tran := utils.Tran{
 					Src: int(src)%nodeNum,
 					Dest: int(dest)%nodeNum,
 				}
@@ -170,7 +171,7 @@ func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]Tra
 
 	fmt.Printf("number of trans is:%v", len(trans))
 
-	selectTrans := make([]Tran, transNum)
+	selectTrans := make([]utils.Tran, transNum)
 	rand.Seed(time.Now().Unix())
 	for i := range selectTrans {
 		selectTrans[i] = trans[rand.Intn(len(trans))]

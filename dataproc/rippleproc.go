@@ -1,13 +1,14 @@
-package utils
+package dataproc
 
 import (
 	"fmt"
+	"github.com/lightningnetwork/simulator/utils"
 	"math/rand"
 	"time"
 )
 
-func (g *Graph) CutOneDegree(i int) int {
-	nodesToDelete := make(map[RouterID]struct{})
+func  CutOneDegree(i int, g *utils.Graph) int {
+	nodesToDelete := make(map[utils.RouterID]struct{})
 	for _, n := range g.Nodes {
 		if len(n.Neighbours) < i {
 			nodesToDelete[n.ID] = struct{}{}
@@ -30,10 +31,10 @@ func (g *Graph) CutOneDegree(i int) int {
 	return len(nodesToDelete)
 }
 
-func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
-	i := RouterID(0)
-	IDMap := make(map[RouterID]RouterID)
-	finalNodes := make(map[RouterID]*Node)
+func ConvertToSeriesID(balance bool,g * utils.Graph) map[utils.RouterID]utils.RouterID {
+	i := utils.RouterID(0)
+	IDMap := make(map[utils.RouterID]utils.RouterID)
+	finalNodes := make(map[utils.RouterID]*utils.Node)
 	for orgID, node := range g.Nodes {
 		IDMap[orgID] = i
 		finalNodes[i] = node
@@ -48,7 +49,7 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 	}
 
 	//Convert channels
-	channels := make(map[string]*Link)
+	channels := make(map[string]*utils.Link)
 	for _, link := range g.Channels {
 		if _, ok := g.Nodes[link.Part1]; !ok {
 			continue
@@ -59,11 +60,11 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 
 		mapped1 := IDMap[link.Part1]
 		mapped2 := IDMap[link.Part2]
-		linkKey := GetLinkKey(mapped1, mapped2)
+		linkKey := utils.GetLinkKey(mapped1, mapped2)
 		linkValue := (link.Val2 + link.Val1) / 2
-		var newLink *Link
+		var newLink *utils.Link
 		if mapped1 < mapped2 {
-			newLink = &Link{
+			newLink = &utils.Link{
 				Part1: mapped1,
 				Part2: mapped2,
 				Val1:  linkValue,
@@ -74,7 +75,7 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 				newLink.Val2 = link.Val2
 			}
 		} else {
-			newLink = &Link{
+			newLink = &utils.Link{
 				Part1: mapped2,
 				Part2: mapped1,
 				Val1:  linkValue,
@@ -92,23 +93,23 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 	return IDMap
 }
 
-func RandomTrans(trans []Tran, IDMap map[RouterID]RouterID, transNum int) []Tran {
-	resTrans := make([]Tran, 0)
+func RandomTrans(trans []utils.Tran, IDMap map[utils.RouterID]utils.RouterID, transNum int) []utils.Tran {
+	resTrans := make([]utils.Tran, 0)
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; len(resTrans) < transNum; i++ {
 		tran := trans[rand.Intn(len(trans))]
 
-			if _, ok := IDMap[RouterID(tran.Src)]; !ok {
+			if _, ok := IDMap[utils.RouterID(tran.Src)]; !ok {
 				continue
 			}
-			if _, ok := IDMap[RouterID(tran.Dest)]; !ok {
+			if _, ok := IDMap[utils.RouterID(tran.Dest)]; !ok {
 				continue
 			}
 
 
-			newTran := Tran{
-				Src:  int(IDMap[RouterID(tran.Src)]),
-				Dest: int(IDMap[RouterID(tran.Dest)]),
+			newTran := utils.Tran{
+				Src:  int(IDMap[utils.RouterID(tran.Src)]),
+				Dest: int(IDMap[utils.RouterID(tran.Dest)]),
 				Val:  tran.Val,
 			}
 		/*
