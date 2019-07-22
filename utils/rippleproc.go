@@ -46,7 +46,7 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 		}
 		node.ID = id
 	}
-
+	rand.Seed(time.Now().UnixNano())
 	//Convert channels
 	channels := make(map[string]*Link)
 	for _, link := range g.Channels {
@@ -85,6 +85,10 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 				newLink.Val1 = link.Val2
 			}
 		}
+		/*
+		newLink.Val1 = (link.Val1 + link.Val2) * Amount(rand.Float64())
+		newLink.Val2 = link.Val1 + link.Val2 - newLink.Val1
+		 */
 		channels[linkKey] = newLink
 	}
 	g.Channels = channels
