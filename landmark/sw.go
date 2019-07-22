@@ -140,7 +140,7 @@ func (s *SW) getNextHop(dest string, root, current utils.RouterID,
 	} else {
 		// TODO(xuehan): 这里应该改成从邻居实时pull地址
 		bestCpl := getCPL(dest, s.Coordination[current][root].coordinate, AddrInterval)
-		for _, n := range s.Nodes[current].Neighbours {
+		for n := range s.Nodes[current].Neighbours {
 			cpl := getCPL(s.Coordination[n][root].coordinate,
 				dest, AddrInterval)
 			// 这个地方和模拟器中代码不一样

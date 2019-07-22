@@ -67,7 +67,7 @@ func (l *LandMarkRouting)SetCoordinations() {
 			queue.Remove(head)
 			node := head.Value.(*utils.Node)
 			addr := l.Coordination[node.ID][root]
-			for _, n := range node.Neighbours {
+			for n := range node.Neighbours {
 				if _, ok := l.Coordination[n][root]; !ok {
 					if (utils.GetLinkValue(n, node.ID, l.Channels) > 0 &&
 						utils.GetLinkValue(node.ID,n, l.Channels) > 0) || !bi {

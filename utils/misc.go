@@ -44,7 +44,7 @@ func ParseTestJson(filePath string) (*Graph, error) {
 	for _, n := range g.Nodes {
 		nodes[n.Id] = &Node{
 			ID:         n.Id,
-			Neighbours: make([]RouterID, 0),
+			Neighbours: make(map[RouterID]struct{}),
 		}
 	}
 	for _, edge := range g.Edges {
@@ -56,8 +56,8 @@ func ParseTestJson(filePath string) (*Graph, error) {
 		}
 		linkKey := GetLinkKey(edge.Node1, edge.Node2)
 		edges[linkKey] = link
-		nodes[link.Part1].Neighbours = append(nodes[link.Part1].Neighbours, link.Part2)
-		nodes[link.Part2].Neighbours = append(nodes[link.Part2].Neighbours, link.Part1)
+		nodes[link.Part1].Neighbours[link.Part2] = struct{}{}
+		nodes[link.Part2].Neighbours[link.Part1] = struct{}{}
 	}
 
 	graph := &Graph{

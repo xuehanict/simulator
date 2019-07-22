@@ -16,12 +16,6 @@ import (
 )
 
 func initLoger(str string) *logrus.Logger {
-	file := "logs/" + str + ".sum" //文件名
-	summaryLogFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
-	if err != nil {
-		fmt.Printf("open log file failed.\n")
-	}
-
 	file1 := "logs/" + str + ".log" //文件名
 	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
@@ -32,12 +26,12 @@ func initLoger(str string) *logrus.Logger {
 	//log.SetFormatter()
 
 	lfHook := lfshook.NewHook(lfshook.WriterMap{
-		logrus.DebugLevel: summaryLogFile, // 为不同级别设置不同的输出目的
-		logrus.InfoLevel:  summaryLogFile,
-		logrus.WarnLevel:  summaryLogFile,
-		logrus.ErrorLevel: summaryLogFile,
-		logrus.FatalLevel: summaryLogFile,
-		logrus.PanicLevel: summaryLogFile,
+		logrus.DebugLevel: logFile, // 为不同级别设置不同的输出目的
+		logrus.InfoLevel:  logFile,
+		logrus.WarnLevel:  logFile,
+		logrus.ErrorLevel: logFile,
+		logrus.FatalLevel: logFile,
+		logrus.PanicLevel: logFile,
 		logrus.TraceLevel: logFile,
 	}, &logrus.JSONFormatter{})
 	log.AddHook(lfHook)
@@ -55,8 +49,8 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 	backupChannelBase := utils.CopyChannels(m.Channels)
 
 	total := 0.0
-	totalVolumn := 0.0
-	successVolumn := 0.0
+	totalVolume := 0.0
+	successVolume := 0.0
 
 	success := 0.0
 	pathNumRecord := make([]int, 0)
@@ -76,7 +70,7 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 		pathN, usedN, metric, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
 			utils.RouterID(tran.Dest), algo, utils.Amount(tran.Val))
 		totalProbe += metric.ProbeMessgeNum
-		totalVolumn += tran.Val
+		totalVolume += tran.Val
 		if err == nil {
 			success++
 			pathNumRecord = append(pathNumRecord, pathN)
@@ -87,8 +81,9 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 			totalOperation += metric.OperationNum
 			totalMaxLength += float64(metric.MaxPathLengh)
 			totalFees += metric.Fees
-			successVolumn += tran.Val
+			successVolume += tran.Val
 
+			/*
 			log.WithFields(logrus.Fields{
 				"result":           true,
 				"success":          success,
@@ -97,14 +92,16 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"to":               tran.Dest,
 				"amt":              tran.Val,
 				"pathN":            pathN,
-				"totalVolumn":      totalVolumn,
-				"successVolumn":    successVolumn,
+				"totalVolumn":      totalVolume,
+				"successVolumn":    successVolume,
 				"usedN":            usedN,
 				"totalProbe":       totalProbe,
 				"averageMaxLen":    totalMaxLength / success,
 				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / successVolumn,
+				"averageFees":      float64(totalFees) / successVolume,
 			}).Trace("execute a payment.")
+
+			 */
 		} else {
 			if payError, ok := err.(*mara.PaymentError); ok {
 				switch payError.Code {
@@ -114,7 +111,7 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 					allcFailed++
 				}
 			}
-
+			/*
 			log.WithFields(logrus.Fields{
 				"result":           false,
 				"error":            err.Error(),
@@ -128,33 +125,45 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 				"totalProbe":       totalProbe,
 				"averageMaxLen":    totalMaxLength / success,
 				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / successVolumn,
-				"totalVolumn":      totalVolumn,
-				"successVolumn":    successVolumn,
+				"averageFees":      float64(totalFees) / successVolume,
+				"totalVolumn":      totalVolume,
+				"successVolumn":    successVolume,
 			}).Trace("execute a payment.")
+			 */
 		}
-
-		if total == 5000 {
-			log.Trace("execute a round")
-		}
+		log.WithFields(logrus.Fields{
+			"success":          success,
+			"total":            total,
+			"from":             tran.Src,
+			"to":               tran.Dest,
+			"amt":              tran.Val,
+			"successVolume":    successVolume,
+			"totalVolume":      totalVolume,
+			"totalProbe":       totalProbe,
+			"averageMaxLen":    totalMaxLength / float64(success),
+			"averageOperation": float64(totalOperation) / float64(success),
+			"averageFees":      float64(totalFees) / float64(successVolume),
+		}).Trace("execute a payment.")
 	}
 
 	// 执行完一轮交易后，需要重新将备份的channel信息拷贝给m
 	m.Channels = utils.CopyChannels(backupChannelBase)
 
+	/*
 	log.WithFields(logrus.Fields{
 		"pathLengthBound":  m.MaxAddLength,
 		"amountLBrate":     m.AmountRate,
 		"averageAllpath":   pathNumTotal / success,
 		"averageUsedPath":  usedNumTotal / success,
 		"totalProbe":       totalProbe,
-		"averageFees":      float64(totalFees) / successVolumn,
+		"averageFees":      float64(totalFees) / successVolume,
 		"averageOperation": float64(totalOperation) / success,
 		"averageMaxLen":    totalMaxLength / success,
-		"totalVolumn":      totalVolumn,
-		"successVolumn":    successVolumn,
+		"totalVolumn":      totalVolume,
+		"successVolumn":    successVolume,
 		"sussessRate":      success / total,
 	}).Infof("a round test result shows")
+	 */
 }
 
 func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {

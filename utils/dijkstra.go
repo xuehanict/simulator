@@ -42,7 +42,7 @@ func Dijkstra(nodes map[RouterID]*Node, start RouterID) (*DAG, map[RouterID]floa
 	// 针对start节点初始化
 	distance[start] = 0
 	flag[start] = true
-	for _, n := range nodes[start].Neighbours {
+	for n := range nodes[start].Neighbours {
 		distance[n] = 1
 		err := heap.DecreaseKey(n, 1)
 		if err != nil {
@@ -55,7 +55,7 @@ func Dijkstra(nodes map[RouterID]*Node, start RouterID) (*DAG, map[RouterID]floa
 		tmpK, min := heap.ExtractMin()
 		k := tmpK.(RouterID)
 		flag[k] = true
-		for _, node := range nodes[k].Neighbours {
+		for node := range nodes[k].Neighbours {
 			tmp := min + 1
 			if !flag[node] {
 				if tmp < distance[node] {

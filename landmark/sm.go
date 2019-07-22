@@ -58,7 +58,7 @@ func (s *SM) getNextHop(currID, root, dest utils.RouterID,
 	destAddr := s.Coordination[dest][root].coordinate
 	minDis := math.MaxInt32
 	minNeighbour := utils.RouterID(-1)
-	for _, nei := range s.Nodes[currID].Neighbours {
+	for nei := range s.Nodes[currID].Neighbours {
 		if _, ok := s.Coordination[nei]; !ok {
 			continue
 		} else if _, ok1 := s.Coordination[nei][root]; !ok1 {

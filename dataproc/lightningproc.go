@@ -19,40 +19,40 @@ type ChannelGraph struct {
 	/// The list of `LightningNode`s in this channel graph
 	Nodes []*LightningNode `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
 	/// The list of `ChannelEdge`s in this channel graph
-	Edges                []*ChannelEdge `protobuf:"bytes,2,rep,name=edges,proto3" json:"edges,omitempty"`
+	Edges []*ChannelEdge `protobuf:"bytes,2,rep,name=edges,proto3" json:"edges,omitempty"`
 }
 
 type LightningNode struct {
-	LastUpdate           uint32         `protobuf:"varint,1,opt,name=last_update,proto3" json:"last_update,omitempty"`
-	PubKey               string         `protobuf:"bytes,2,opt,name=pub_key,proto3" json:"pub_key,omitempty"`
-	Alias                string         `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
-	Addresses            []*NodeAddress `protobuf:"bytes,4,rep,name=addresses,proto3" json:"addresses,omitempty"`
-	Color                string         `protobuf:"bytes,5,opt,name=color,proto3" json:"color,omitempty"`
+	LastUpdate uint32         `protobuf:"varint,1,opt,name=last_update,proto3" json:"last_update,omitempty"`
+	PubKey     string         `protobuf:"bytes,2,opt,name=pub_key,proto3" json:"pub_key,omitempty"`
+	Alias      string         `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
+	Addresses  []*NodeAddress `protobuf:"bytes,4,rep,name=addresses,proto3" json:"addresses,omitempty"`
+	Color      string         `protobuf:"bytes,5,opt,name=color,proto3" json:"color,omitempty"`
 }
 
 type NodeAddress struct {
-	Network              string   `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
-	Addr                 string   `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	Network string `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	Addr    string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
 }
 
 type ChannelEdge struct {
-	ChannelId            string         `protobuf:"varint,1,opt,name=channel_id,proto3" json:"channel_id,omitempty"`
-	ChanPoint            string         `protobuf:"bytes,2,opt,name=chan_point,proto3" json:"chan_point,omitempty"`
-	LastUpdate           uint32         `protobuf:"varint,3,opt,name=last_update,proto3" json:"last_update,omitempty"`
-	Node1Pub             string         `protobuf:"bytes,4,opt,name=node1_pub,proto3" json:"node1_pub,omitempty"`
-	Node2Pub             string         `protobuf:"bytes,5,opt,name=node2_pub,proto3" json:"node2_pub,omitempty"`
-	Capacity             string          `protobuf:"varint,6,opt,name=capacity,proto3" json:"capacity,omitempty"`
-	Node1Policy          *RoutingPolicy `protobuf:"bytes,7,opt,name=node1_policy,proto3" json:"node1_policy,omitempty"`
-	Node2Policy          *RoutingPolicy `protobuf:"bytes,8,opt,name=node2_policy,proto3" json:"node2_policy,omitempty"`
+	ChannelId   string         `protobuf:"varint,1,opt,name=channel_id,proto3" json:"channel_id,omitempty"`
+	ChanPoint   string         `protobuf:"bytes,2,opt,name=chan_point,proto3" json:"chan_point,omitempty"`
+	LastUpdate  uint32         `protobuf:"varint,3,opt,name=last_update,proto3" json:"last_update,omitempty"`
+	Node1Pub    string         `protobuf:"bytes,4,opt,name=node1_pub,proto3" json:"node1_pub,omitempty"`
+	Node2Pub    string         `protobuf:"bytes,5,opt,name=node2_pub,proto3" json:"node2_pub,omitempty"`
+	Capacity    string         `protobuf:"varint,6,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Node1Policy *RoutingPolicy `protobuf:"bytes,7,opt,name=node1_policy,proto3" json:"node1_policy,omitempty"`
+	Node2Policy *RoutingPolicy `protobuf:"bytes,8,opt,name=node2_policy,proto3" json:"node2_policy,omitempty"`
 }
 
 type RoutingPolicy struct {
-	TimeLockDelta        uint32   `protobuf:"varint,1,opt,name=time_lock_delta,proto3" json:"time_lock_delta,omitempty"`
-	MinHtlc              string    `protobuf:"varint,2,opt,name=min_htlc,proto3" json:"min_htlc,omitempty"`
-	FeeBaseMsat          string    `protobuf:"varint,3,opt,name=fee_base_msat,proto3" json:"fee_base_msat,omitempty"`
-	FeeRateMilliMsat     string    `protobuf:"varint,4,opt,name=fee_rate_milli_msat,proto3" json:"fee_rate_milli_msat,omitempty"`
-	Disabled             bool     `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
-	MaxHtlcMsat          string   `protobuf:"varint,6,opt,name=max_htlc_msat,proto3" json:"max_htlc_msat,omitempty"`
+	TimeLockDelta    uint32 `protobuf:"varint,1,opt,name=time_lock_delta,proto3" json:"time_lock_delta,omitempty"`
+	MinHtlc          string `protobuf:"varint,2,opt,name=min_htlc,proto3" json:"min_htlc,omitempty"`
+	FeeBaseMsat      string `protobuf:"varint,3,opt,name=fee_base_msat,proto3" json:"fee_base_msat,omitempty"`
+	FeeRateMilliMsat string `protobuf:"varint,4,opt,name=fee_rate_milli_msat,proto3" json:"fee_rate_milli_msat,omitempty"`
+	Disabled         bool   `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	MaxHtlcMsat      string `protobuf:"varint,6,opt,name=max_htlc_msat,proto3" json:"max_htlc_msat,omitempty"`
 }
 
 func ParseLightningGraph(filePath string) (*utils.Graph, error) {
@@ -72,10 +72,10 @@ func ParseLightningGraph(filePath string) (*utils.Graph, error) {
 	for _, lightNode := range g.Nodes {
 		nodeIDMap[lightNode.PubKey] = index
 		node := &utils.Node{
-			ID: index,
-			Neighbours: make([]utils.RouterID,0),
+			ID:         index,
+			Neighbours: make(map[utils.RouterID]struct{}),
 		}
-		nodes[index]=node
+		nodes[index] = node
 		index++
 	}
 
@@ -83,21 +83,21 @@ func ParseLightningGraph(filePath string) (*utils.Graph, error) {
 		mapped1 := nodeIDMap[lightEdge.Node1Pub]
 		mapped2 := nodeIDMap[lightEdge.Node2Pub]
 		linkKey := utils.GetLinkKey(mapped1, mapped2)
-		capacity, _ :=  strconv.ParseInt(lightEdge.Capacity, 10, 64)
+		capacity, _ := strconv.ParseInt(lightEdge.Capacity, 10, 64)
 		if mapped1 < mapped2 {
 			link := &utils.Link{
 				Part1: mapped1,
 				Part2: mapped2,
-				Val1: utils.Amount(capacity)/2,
-				Val2: utils.Amount(capacity)/2,
+				Val1:  utils.Amount(capacity) / 2,
+				Val2:  utils.Amount(capacity) / 2,
 			}
 			channels[linkKey] = link
 		} else {
 			link := &utils.Link{
 				Part1: mapped2,
 				Part2: mapped1,
-				Val1: utils.Amount(capacity)/2,
-				Val2: utils.Amount(capacity)/2,
+				Val1:  utils.Amount(capacity) / 2,
+				Val2:  utils.Amount(capacity) / 2,
 			}
 			channels[linkKey] = link
 		}
@@ -106,19 +106,21 @@ func ParseLightningGraph(filePath string) (*utils.Graph, error) {
 			nodes[mapped2].CheckLink(mapped1) {
 			continue
 		}
-		nodes[mapped1].Neighbours = append(nodes[mapped1].Neighbours, mapped2)
-		nodes[mapped2].Neighbours = append(nodes[mapped2].Neighbours, mapped1)
+		nodes[mapped1].Neighbours[mapped2] = struct{}{}
+		nodes[mapped2].Neighbours[mapped1] = struct{}{}
 	}
-	return &utils.Graph{
-		Nodes: nodes,
-		Channels:channels,
-		DAGs: map[utils.RouterID]*utils.DAG{},
-		SPTs: map[utils.RouterID]*utils.DAG{},
+	graph := &utils.Graph{
+		Nodes:    nodes,
+		Channels: channels,
+		DAGs:     map[utils.RouterID]*utils.DAG{},
+		SPTs:     map[utils.RouterID]*utils.DAG{},
 		Distance: map[utils.RouterID]map[utils.RouterID]float64{},
-	}, nil
+	}
+	utils.RanddomFeeRate(graph.Channels)
+	return graph, nil
 }
 
-func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]utils.Tran, error){
+func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]utils.Tran, error) {
 	// 先根据ripple的数据生成sender和reeiver对
 	trans := make([]utils.Tran, 0)
 	if fileObj, err := os.Open(tranPath); err == nil {
@@ -130,8 +132,8 @@ func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]uti
 				src, _ := strconv.ParseInt(spplieted[0], 10, 32)
 				dest, _ := strconv.ParseInt(spplieted[1], 10, 32)
 				tran := utils.Tran{
-					Src: int(src)%nodeNum,
-					Dest: int(dest)%nodeNum,
+					Src:  int(src) % nodeNum,
+					Dest: int(dest) % nodeNum,
 				}
 				if tran.Src == tran.Dest {
 					continue
@@ -150,7 +152,7 @@ func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]uti
 	}
 
 	// 再根据bitcoin的真实值生成交易的数值
-	values := make([]float64,0)
+	values := make([]float64, 0)
 	f, err := os.Open(valuePath)
 	if err != nil {
 		fmt.Println("os Open error: ", err)
@@ -179,4 +181,3 @@ func GetLightningTrans(nodeNum, transNum int, tranPath, valuePath string) ([]uti
 	}
 	return selectTrans, nil
 }
-

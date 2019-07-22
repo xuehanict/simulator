@@ -17,7 +17,7 @@ func (f *Flash) convertGraph () (*goraph.Graph,error) {
 	}
 
 	for _, node := range f.Nodes {
-		for _, nei := range node.Neighbours {
+		for nei := range node.Neighbours {
 			err := graph.AddEdge(node.ID, nei, 1, nil)
 			if err != nil {
 				return nil, err

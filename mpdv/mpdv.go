@@ -31,7 +31,7 @@ func (m *Mpdv)ResetTable(dests map[utils.RouterID]struct{}) {
 		table[node.ID] = make(map[utils.RouterID]map[utils.RouterID]int)
 		for dest := range dests {
 			table[node.ID][dest] = make(map[utils.RouterID]int)
-			for _, nei := range node.Neighbours {
+			for nei := range node.Neighbours {
 				// 同样距离的结点或者小距离的结点才可能作为下一跳
 				if m.Distance[dest][nei] <= m.Distance[dest][node.ID] {
 					table[node.ID][dest][nei] = int(m.Distance[dest][nei]) + 1
@@ -54,7 +54,7 @@ func (m *Mpdv)InitTable(dests  map[utils.RouterID]struct{}) {
 		table[node.ID] = make(map[utils.RouterID]map[utils.RouterID]int)
 		for dest := range dests {
 			table[node.ID][dest] = make(map[utils.RouterID]int)
-			for _, nei := range node.Neighbours {
+			for nei := range node.Neighbours {
 				// 同样距离的结点或者小距离的结点才可能作为下一跳
 				if m.Distance[dest][nei] <= m.Distance[dest][node.ID] {
 					table[node.ID][dest][nei] = int(m.Distance[dest][nei]) + 1

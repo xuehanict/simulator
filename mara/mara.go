@@ -68,7 +68,7 @@ func (m *Mara) MaraMC(startID utils.RouterID) *utils.DAG {
 		largestD := 0
 		for vtx := range T {
 			tmpConn := 0
-			for _, n := range nodes[vtx].Neighbours {
+			for n := range nodes[vtx].Neighbours {
 				if _, ok := S[n]; ok {
 					tmpConn++
 				}
@@ -203,7 +203,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *utils.DAG {
 	}
 
 	// 对start的邻居初始化
-	for _, i := range nodes[startID].Neighbours {
+	for i := range nodes[startID].Neighbours {
 		capcity[i] = MAX_ADJACENT - 1
 		if spt.Vertexs[i].CheckParent(startID) {
 			err := T.Insert(i, capcity[i])
@@ -221,7 +221,7 @@ func (m *Mara) MaraSpeOpt(startID utils.RouterID) *utils.DAG {
 		tag, _ := T.ExtractMin()
 		id := tag.(utils.RouterID)
 		S[id] = struct{}{}
-		for _, i := range nodes[id].Neighbours {
+		for i := range nodes[id].Neighbours {
 			if _, ok := S[i]; ok {
 				continue
 			}
@@ -577,7 +577,7 @@ func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*utils.Node) *ut
 	dag.Vertexs = tmpNodes
 
 	for i := 0; i < len(ordering); i++ {
-		for _, n := range nodes[ordering[i]].Neighbours {
+		for n := range nodes[ordering[i]].Neighbours {
 			if mapOrdering[n] > i {
 
 				tmpNodes[ordering[i]].Children = append(tmpNodes[ordering[i]].Children,

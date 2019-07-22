@@ -93,8 +93,8 @@ func TestGetRoutes(t *testing.T) {
 	}
 	startID := utils.RouterID(3)
 	m.DAGs[startID] = m.MaraSpeOpt(startID)
-
-	paths := m.getRoutes(9, 3, 10)
+	metric := utils.Metrics{}
+	paths := m.getRoutes(9, 3, 10, &metric)
 	spew.Dump(paths)
 
 	t.Log("done")
@@ -107,6 +107,8 @@ func TestPayment(t *testing.T) {
 	}
 	m := &Mara{
 		Graph: graph,
+		AmountRate: 0.1,
+		NextHopBound: 10,
 	}
 
 	src := utils.RouterID(1)
@@ -115,8 +117,8 @@ func TestPayment(t *testing.T) {
 //	paths := m.getRoutes(src, dest, 10)
 //	spew.Dump(paths)
 	//	spew.Dump(m.SPTs[dest])
-	total, _, result := m.SendPaymentWithBond(src, dest, MARA_MC,
-		10, 0, 0.01)
+	total, _, _, result := m.SendPaymentWithBond(src, dest, MARA_MC,
+		10)
 	//spew.Dump(m.DAGs[dest])
 	spew.Dump(total)
 	spew.Dump(result)
@@ -133,8 +135,8 @@ func TestGetRoutesSpec(t *testing.T) {
 
 	src := utils.RouterID(2)
 	dest := utils.RouterID(7)
-
-	paths := m.getRoutes(src, dest, 150)
+	metric := &utils.Metrics{}
+	paths := m.getRoutes(src, dest, 150, metric)
 	spew.Dump(paths)
 	//spew.Dump(m.SPTs[dest])
 	result := m.SendPayment(src, dest, 150)
@@ -153,8 +155,8 @@ func TestRipple(t *testing.T) {
 	for _, tran := range trans {
 		total++
 
-		len1, len2, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
-			utils.RouterID(tran.Dest), MARA_SPE, utils.Amount(tran.Val), 6, 0.01)
+		len1, len2,_, err := m.SendPaymentWithBond(utils.RouterID(tran.Src),
+			utils.RouterID(tran.Dest), MARA_SPE, utils.Amount(tran.Val))
 		if err == nil {
 			success++
 		}
@@ -184,13 +186,13 @@ func parseTestJson(filePath string) (*utils.Graph, error) {
 		fmt.Printf("%v", err)
 		os.Exit(1)
 	}
-	nodes := make([]*utils.Node, len(g.Nodes))
+	nodes := make(map[utils.RouterID]*utils.Node)
 	edges := make(map[string]*utils.Link)
 
 	for _, n := range g.Nodes {
 		nodes[n.Id] = &utils.Node{
 			ID:         n.Id,
-			Neighbours: make([]utils.RouterID, 0),
+			Neighbours: make(map[utils.RouterID]struct{}),
 		}
 	}
 	for _, edge := range g.Edges {
@@ -202,8 +204,8 @@ func parseTestJson(filePath string) (*utils.Graph, error) {
 		}
 		linkKey := utils.GetLinkKey(edge.Node1, edge.Node2)
 		edges[linkKey] = link
-		nodes[link.Part1].Neighbours = append(nodes[link.Part1].Neighbours, link.Part2)
-		nodes[link.Part2].Neighbours = append(nodes[link.Part2].Neighbours, link.Part1)
+		nodes[link.Part1].Neighbours[link.Part2] = struct{}{}
+		nodes[link.Part2].Neighbours[link.Part1] = struct{}{}
 	}
 
 	graph := &utils.Graph{

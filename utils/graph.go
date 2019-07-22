@@ -213,6 +213,96 @@ func (g *Graph) UpdateWeightsReverse(routes []Path,
 	return nil
 }
 
+func (g *Graph)AddNode(id RouterID) {
+	if _, ok := g.Nodes[id]; ok {
+		return
+	}
+
+	g.Nodes[id] = &Node{
+		ID:         id,
+		Parents:    make([]RouterID, 0),
+		Children:   make([]RouterID, 0),
+		Neighbours: make(map[RouterID]struct{}),
+	}
+}
+
+func (g *Graph)AddLink(key string, link *Link) error {
+	if _, ok := g.Channels[key]; ok {
+		return fmt.Errorf("link exsist")
+	}
+	g.Channels[key] = link
+	return nil
+}
+
+func GetGraphSnapshot(data string) *Graph {
+	f, err := os.Open(data + "/finalSets/dynamic/jan2013-lcc-t0.graph_CREDIT_LINKS")
+	if err != nil {
+		fmt.Println("os Open error: ", err)
+		return nil
+	}
+	defer f.Close()
+
+	br := bufio.NewReader(f)
+	lineNum := 1
+	links := make(map[string]*Link, 0)
+	nodes := make(map[RouterID]*Node)
+	graph := &Graph{
+		Nodes:    nodes,
+		Channels: links,
+		DAGs:     make(map[RouterID]*DAG),
+		SPTs:     make(map[RouterID]*DAG),
+		Distance: make(map[RouterID]map[RouterID]float64),
+	}
+	for {
+		line, _, err := br.ReadLine()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Println("br ReadLine error: ", err)
+			return nil
+		}
+
+		// 过滤掉前面几行的无用信息
+		if lineNum < 5 {
+			lineNum++
+			continue
+		}
+
+		splitted := strings.Split(string(line), " ")
+		id1, _ := strconv.Atoi(splitted[0])
+		id2, _ := strconv.Atoi(splitted[1])
+		v1, _ := strconv.ParseFloat(splitted[2], 64)
+		v2, _ := strconv.ParseFloat(splitted[3], 64)
+		v3, _ := strconv.ParseFloat(splitted[4], 64)
+
+		if v3-v2 !=0 || v2-v1 != 0 {
+			link := &Link{
+				Part1: RouterID(id1),
+				Part2: RouterID(id2),
+				Val1:  Amount(v3 - v2),
+				Val2:  Amount(v2 - v1),
+			}
+			links[GetLinkKey(link.Part1, link.Part2)] = link
+			graph.AddNode(RouterID(id1))
+			graph.AddNode(RouterID(id2))
+		}
+	}
+
+	keySlice := make([]string, 0)
+	for k := range links {
+		keySlice = append(keySlice, k)
+	}
+	sort.Strings(keySlice)
+	for _, key := range keySlice {
+		edge := links[key]
+		nodes[edge.Part1].Neighbours[edge.Part2] = struct{}{}
+		nodes[edge.Part2].Neighbours[edge.Part1] = struct{}{}
+	}
+
+	RanddomFeeRate(links)
+	return graph
+}
+
 func GetGraph(data string) *Graph {
 	f, err := os.Open(data + "/finalSets/static/ripple-lcc.graph_CREDIT_LINKS")
 	if err != nil {

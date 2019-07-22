@@ -25,7 +25,7 @@ func BfsPath (nodes map[RouterID]*Node, src, dest RouterID, checkCap bool,
 			if currNode.ID == dest {
 				break
 			}
-			for _, nei := range currNode.Neighbours {
+			for nei := range currNode.Neighbours {
 				if visited[nei] == false &&
 					(checkCap == false || GetLinkValue(currNode.ID,nei, linkBase)>0){
 					queue.PushBack(nodes[nei])

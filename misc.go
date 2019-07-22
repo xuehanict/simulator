@@ -2,11 +2,9 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"github.com/lightningnetwork/simulator/utils"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -75,48 +73,5 @@ func GenerateTrans(filePath string) []tran {
 	}
 
 	return trans
-}
-
-func ParseTestJson(filePath string) (*utils.Graph, error) {
-
-	var g testGraph
-	graphJson, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(graphJson, &g); err != nil {
-		fmt.Printf("%v", err)
-		os.Exit(1)
-	}
-	nodes := make(map[utils.RouterID]*utils.Node)
-	edges := make(map[string]*utils.Link)
-
-	for _, n := range g.Nodes {
-		nodes[n.Id] = &utils.Node{
-			ID:         n.Id,
-			Neighbours: make([]utils.RouterID, 0),
-		}
-	}
-	for _, edge := range g.Edges {
-		link := &utils.Link{
-			Part1: utils.RouterID(edge.Node1),
-			Part2: utils.RouterID(edge.Node2),
-			Val1:  utils.Amount(edge.Capacity1),
-			Val2:  utils.Amount(edge.Capacity2),
-		}
-		linkKey := utils.GetLinkKey(edge.Node1, edge.Node2)
-		edges[linkKey] = link
-		nodes[link.Part1].Neighbours = append(nodes[link.Part1].Neighbours, link.Part2)
-		nodes[link.Part2].Neighbours = append(nodes[link.Part2].Neighbours, link.Part1)
-	}
-
-	graph := &utils.Graph{
-		Channels: edges,
-		Nodes:    nodes,
-		DAGs:     make(map[utils.RouterID]*utils.DAG),
-		SPTs:     make(map[utils.RouterID]*utils.DAG),
-		Distance: make(map[utils.RouterID]map[utils.RouterID]float64),
-	}
-	return graph, nil
 }
 

@@ -23,8 +23,8 @@ func rippleDataTest(tranNum int) {
 			break
 		}
 	}
-	idMap := dataproc.ConvertToSeriesID(false, g)
-	trans := dataproc.RandomTrans(oriTrans, idMap, 10000)
+	idMap := dataproc.ConvertToSeriesID(dataproc.ORIGION_CHANNEL, g)
+	trans := dataproc.RandomRippleTrans(oriTrans, idMap, 10000, dataproc.MAPP_SAMPLE, false)
 	backChannels := utils.CopyChannels(g.Channels)
 	fmt.Printf("transaction length is %v", len(trans))
 	//time.Sleep(time.Second * 100)
@@ -32,7 +32,7 @@ func rippleDataTest(tranNum int) {
 	// sm测试
 	fmt.Printf("sm start teset\n")
 	sm := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
-	SMEval(sm, trans, "random-r")
+	SMEval(sm, trans, "random-r" )
 
 	// spider测试
 	fmt.Printf("spider start teset\n")
@@ -73,16 +73,17 @@ func rippleDataTest(tranNum int) {
 	wg.Wait()
 	fmt.Printf("算完所有路径\n")
 	FlashEval(f, trans, "random-r")
-
 }
 
 func lightningDataTest(tranNum int) {
 	fmt.Printf("start test\n")
-	g, _ := dataproc.ParseLightningGraph("./data/lightning/testnetgraph.json")
-	dataproc.CutOneDegree(2, g)
-	dataproc.CutOneDegree(2, g)
-	dataproc.CutOneDegree(2, g)
-	dataproc.ConvertToSeriesID(true, g)
+	g, _ := dataproc.ParseLightningGraph("./data/lightning/mainnetgraph.json")
+	for {
+		if dataproc.CutOneDegree(2, g) == 0 {
+			break
+		}
+	}
+	dataproc.ConvertToSeriesID(dataproc.ORIGION_CHANNEL, g)
 	trans, _ := dataproc.GetLightningTrans(len(g.Nodes), 10000,
 		"data/ripple/ripple_val.csv", "data/lightning/BitcoinVal.txt")
 	backChannels := utils.CopyChannels(g.Channels)
