@@ -10,7 +10,7 @@ import (
 
 const (
 	REMAINDER_SAMPLE = 0
-	MAPP_SAMPLE      = 1
+	MAP_SAMPLE       = 1
 
 	ORIGION_CHANNEL   = 1
 	REBALANCE_CHANEL   = 2
@@ -172,7 +172,7 @@ func RandomRippleTrans(trans []utils.Tran, IDMap map[utils.RouterID]utils.Router
 				Val:  tran.Val,
 			}
 			resTrans = append(resTrans, newTran)
-		} else if geneWay == MAPP_SAMPLE {
+		} else if geneWay == MAP_SAMPLE {
 			newTran := utils.Tran{
 				Src:  int(IDMap[utils.RouterID(tran.Src)]),
 				Dest: int(IDMap[utils.RouterID(tran.Dest)]),

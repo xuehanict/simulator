@@ -23,18 +23,13 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "lightning",
+			Value: "ripple",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
 			Name:  "trans_num",
 			Value: 10000,
 			Usage: "number of transactions to execute",
-		},
-		cli.StringFlag{
-			Name:  "dataset",
-			Value: "o",
-			Usage: "data set used to test. r->ripple, l-> lightning, o->origin data",
 		},
 	}
 
@@ -157,8 +152,8 @@ func main() {
 				testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
 			*/
 		case "ripple":
-			rippleDataTest(tranNum)
-
+			//rippleDataTest(tranNum)
+			rippleSnapShotDataTest(tranNum)
 		case "lightning":
 			lightningDataTest(tranNum)
 		}
