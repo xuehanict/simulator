@@ -41,6 +41,25 @@ func CutOneDegree(i int, g *utils.Graph) int {
 	return len(nodesToDelete)
 }
 
+func GetNotConnectedNodes(g *utils.Graph)  map[utils.RouterID]struct{} {
+	part1 := make(map[utils.RouterID]struct{})
+	partOther := make(map[utils.RouterID]struct{})
+	for id := range g.Nodes {
+		path  := utils.BfsPath(g.Nodes, 4, id,false, g.Channels)
+		if path == nil || len(path) == 0 {
+			partOther[id] = struct{}{}
+		} else {
+			part1[id] = struct{}{}
+		}
+	}
+	if len(partOther) > len(part1) {
+		return part1
+	} else {
+		return partOther
+	}
+}
+
+
 func RemoveNotConnectNodes(g *utils.Graph, toRemove map[utils.RouterID]struct{}) {
 	for id := range g.Nodes {
 		if _, ok := toRemove[id]; ok {
@@ -110,8 +129,8 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph) map[utils.RouterID]u
 		} else {
 
 			newLink = &utils.Link{
-				Part1: mapped1,
-				Part2: mapped2,
+				Part1: mapped2,
+				Part2: mapped1,
 			}
 			switch balanceDistiWay {
 			case ORIGION_CHANNEL:

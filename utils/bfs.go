@@ -8,11 +8,11 @@ func BfsPath (nodes map[RouterID]*Node, src, dest RouterID, checkCap bool,
 	linkBase map[string]*Link) Path{
 	queue := list.New()
 	queue.PushBack(nodes[src])
-	visited := make([]bool, len(nodes))
-	prev := make([]RouterID, len(nodes))
-	distance := make([]int, len(nodes))
+	visited := make(map[RouterID]bool)
+	prev := make(map[RouterID]RouterID)
+	distance := make(map[RouterID]int)
 
-	for i :=  range visited {
+	for i :=  range nodes{
 		visited[i] = false
 	}
 	visited[src] = true

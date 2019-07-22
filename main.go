@@ -152,8 +152,8 @@ func main() {
 				testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
 			*/
 		case "ripple":
-			//rippleDataTest(tranNum)
-			rippleSnapShotDataTest(tranNum)
+			rippleDataTest(tranNum)
+			//rippleSnapShotDataTest(tranNum)
 		case "lightning":
 			lightningDataTest(tranNum)
 		}

@@ -23,7 +23,7 @@ func rippleDataTest(tranNum int) {
 			break
 		}
 	}
-	idMap := dataproc.ConvertToSeriesID(dataproc.ORIGION_CHANNEL, g)
+	idMap := dataproc.ConvertToSeriesID(dataproc.REBALANCE_CHANEL, g)
 	trans := dataproc.RandomRippleTrans(oriTrans, idMap, 10000, dataproc.MAP_SAMPLE, false)
 	backChannels := utils.CopyChannels(g.Channels)
 	fmt.Printf("transaction length is %v", len(trans))
@@ -81,12 +81,17 @@ func rippleSnapShotDataTest(tranNum int) {
 	utils.RanddomFeeRate(g.Channels)
 	oriTrans, _ := utils.GenerateTransFromPath("data/finalSets/static/")
 	fmt.Printf("origin trans length is %v", len(oriTrans))
+
+	// 对图进行预处理，先删除度为1的结点， 再删除不连通的小部分, 最后再将序号再从0开始编排
 	for {
 		if dataproc.CutOneDegree(2, g) == 0 {
 			break
 		}
 	}
-	idMap := dataproc.ConvertToSeriesID(dataproc.ORIGION_CHANNEL, g)
+	toRemove := dataproc.GetNotConnectedNodes(g)
+	dataproc.RemoveNotConnectNodes(g, toRemove)
+
+	idMap := dataproc.ConvertToSeriesID(dataproc.REBALANCE_CHANEL, g)
 	trans := dataproc.RandomRippleTrans(oriTrans, idMap, 10000, dataproc.REMAINDER_SAMPLE, false)
 	backChannels := utils.CopyChannels(g.Channels)
 	fmt.Printf("transaction length is %v", len(trans))
