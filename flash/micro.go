@@ -197,10 +197,13 @@ func isSamePath(path1, path2 utils.Path) bool {
 }
 
 func (f *Flash)AddShortestPathsTest(src, dest utils.RouterID)  {
+	f.rw.Lock()
 	_, ok := f.routingTable[src]
+
 	if !ok {
 		f.routingTable[src] = make(map[utils.RouterID][]utils.Path)
 	}
+	f.rw.Unlock()
 	_, ok = f.routingTable[src][dest]
 	if !ok {
 		paths, _ := f.getKshortestPath(src, dest, 4)

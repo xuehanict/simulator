@@ -115,7 +115,7 @@ func main() {
 
 	tranNumArray := []int{1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000}
 	// 先输出成功率
-	fileObj,err := os.OpenFile("res/log-res.txt",os.O_RDWR|os.O_CREATE|os.O_TRUNC,0644)
+	fileObj,err := os.OpenFile("res/uniform-remainder-nocut2.txt",os.O_RDWR|os.O_CREATE|os.O_TRUNC,0644)
 	if err!= nil {
 		fmt.Printf("faced error :%v\n", err)
 		return

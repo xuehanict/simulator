@@ -221,6 +221,7 @@ func (g *Graph) UpdateWeightsReverse(routes []Path,
 
 func GetGraph(data string) *Graph {
 	f, err := os.Open(data + "/finalSets/static/ripple-lcc.graph_CREDIT_LINKS")
+	//f, err := os.Open(data + "/finalSets/dynamic/jan2013-lcc-t0.graph_CREDIT_LINKS")
 	if err != nil {
 		fmt.Println("os Open error: ", err)
 		return nil
@@ -257,7 +258,10 @@ func GetGraph(data string) *Graph {
 			Val1:  Amount(v3 - v2),
 			Val2:  Amount(v2 - v1),
 		}
-		links[GetLinkKey(link.Part1, link.Part2)] = link
+
+		if v3 - v2 != 0 || v2 - v1 != 0 {
+			links[GetLinkKey(link.Part1, link.Part2)] = link
+		}
 	}
 
 	nodes := make(map[RouterID]*Node)
@@ -278,6 +282,24 @@ func GetGraph(data string) *Graph {
 	sort.Strings(keySlice)
 	for _, key := range keySlice {
 		edge := links[key]
+		if _, ok := nodes[edge.Part1]; !ok {
+			router := &Node{
+				ID:         RouterID(edge.Part1),
+				Parents:    make([]RouterID, 0),
+				Children:   make([]RouterID, 0),
+				Neighbours: make([]RouterID, 0),
+			}
+			nodes[RouterID(edge.Part1)] = router
+		}
+		if _, ok := nodes[edge.Part2]; !ok {
+			router := &Node{
+				ID:         RouterID(edge.Part2),
+				Parents:    make([]RouterID, 0),
+				Children:   make([]RouterID, 0),
+				Neighbours: make([]RouterID, 0),
+			}
+			nodes[RouterID(edge.Part2)] = router
+		}
 		nodes[edge.Part1].Neighbours = append(nodes[edge.Part1].Neighbours, edge.Part2)
 		nodes[edge.Part2].Neighbours = append(nodes[edge.Part2].Neighbours, edge.Part1)
 	}

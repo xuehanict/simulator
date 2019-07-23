@@ -23,7 +23,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "lightning",
+			Value: "lighting",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -167,6 +167,7 @@ func main() {
 				if g.CutOneDegree(4) == 0 {
 					break
 				}
+				fmt.Printf("graph node number :%v\n", len(g.Nodes))
 			}
 			idMap := g.ConvertToSeriesID(false)
 			trans := utils.RandomTrans(oriTrans, idMap, 10000)
@@ -221,10 +222,13 @@ func main() {
 
 		case "lightning":
 			fmt.Printf("start test\n")
-			g, _ := utils.ParseLightningGraph("./data/lightning/testnetgraph.json")
-			g.CutOneDegree(2)
-			g.CutOneDegree(2)
-			g.CutOneDegree(2)
+			g, _ := utils.ParseLightningGraph("./data/lightning/mainnetgraph.json")
+			for {
+				if g.CutOneDegree(2) == 0 {
+					break
+				}
+				fmt.Printf("graph node number :%v\n", len(g.Nodes))
+			}
 			g.ConvertToSeriesID(true)
 			trans, _ := utils.GetLightningTrans(len(g.Nodes), 10000,
 				"data/ripple/ripple_val.csv", "data/lightning/BitcoinVal.txt")
@@ -250,7 +254,7 @@ func main() {
 				Graph:        g,
 				MaxAddLength: 4,
 				AmountRate:   0.1,
-				NextHopBound: 50,
+				NextHopBound: 10,
 			}
 			MaraEval(m, trans, mara.MARA_MC, "random-l")
 

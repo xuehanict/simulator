@@ -17,7 +17,7 @@ import (
 
 func initLoger(str string) *logrus.Logger {
 	file1 := "logs/" + str + ".log" //文件名
-	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
+	logFile, err := os.OpenFile(file1, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0766)
 	if err != nil {
 		fmt.Printf("open log file failed.\n")
 	}

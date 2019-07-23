@@ -85,10 +85,10 @@ func (g *Graph) ConvertToSeriesID(balance bool) map[RouterID]RouterID {
 				newLink.Val1 = link.Val2
 			}
 		}
-		/*
+
 		newLink.Val1 = (link.Val1 + link.Val2) * Amount(rand.Float64())
 		newLink.Val2 = link.Val1 + link.Val2 - newLink.Val1
-		 */
+
 		channels[linkKey] = newLink
 	}
 	g.Channels = channels
@@ -109,18 +109,29 @@ func RandomTrans(trans []Tran, IDMap map[RouterID]RouterID, transNum int) []Tran
 				continue
 			}
 
+/*
+			if tran.Val > 1786.37 || tran.Val < 0.15 {
+				continue
+			}
+*/
 
+/*
 			newTran := Tran{
 				Src:  int(IDMap[RouterID(tran.Src)]),
 				Dest: int(IDMap[RouterID(tran.Dest)]),
 				Val:  tran.Val,
 			}
-		/*
+
+ */
+
+
 		newTran := Tran{
 			Src:  tran.Src % len(IDMap),
 			Dest: tran.Dest % len(IDMap),
 			Val:  tran.Val,
-		}*/
+		}
+
+
 		resTrans = append(resTrans, newTran)
 	}
 	return resTrans
