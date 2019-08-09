@@ -23,12 +23,12 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "ripple",
+			Value: "sp",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
 			Name:  "trans_num",
-			Value: 10000,
+			Value: 5000,
 			Usage: "number of transactions to execute",
 		},
 	}
