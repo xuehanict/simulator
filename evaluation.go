@@ -222,6 +222,7 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 		}).Trace("execute a payment.")
 	}
 
+	/*
 	fileObj_, err := os.OpenFile("sp-channels.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return
@@ -237,6 +238,7 @@ func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {
 			}
 		}
 	}
+	 */
 }
 
 func FlashEval(f *flash.Flash, trans []utils.Tran, other string) {
@@ -391,7 +393,7 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 			"averageFees":      totalFees / successAmt,
 		}).Trace("execute a payment.")
 	}
-
+ 	/*
 	fileObj_, err := os.OpenFile("sm-channels.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return
@@ -407,6 +409,7 @@ func SMEval(s *landmark.SM, trans []utils.Tran, other string) {
 			}
 		}
 	}
+ 	 */
 }
 
 func MpdvEval(m *mpdv.Mpdv, epoch int, trans []utils.Tran, other string) {
