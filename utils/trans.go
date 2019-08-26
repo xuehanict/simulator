@@ -18,8 +18,8 @@ type Tran struct {
 	Val  float64
 }
 
+// 从单个文件中读取出全部交易
 func GenerateTrans(filePath string) []Tran {
-
 	f, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("os Open error: ", err)
@@ -52,6 +52,7 @@ func GenerateTrans(filePath string) []Tran {
 	return trans
 }
 
+// 一次性从目录中读取全部文件的所有交易出来
 func GenerateTransFromPath (path string) ([]Tran, error) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -65,10 +66,11 @@ func GenerateTransFromPath (path string) ([]Tran, error) {
 			res = append(res, trans...)	
 		}
 	}
-	fmt.Printf("trans length is %v\n", len(res))
+	//fmt.Printf("trans length is %v\n", len(res))
 	return res, nil
 }
 
+// 从所有交易中进行采样，num是采样的个数
 func SampleTrans(dirPath string, num int) ([]Tran, error) {
 	trans, err := GenerateTransFromPath(dirPath)
 	if err != nil {

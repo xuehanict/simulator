@@ -1,10 +1,14 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 )
 
 /**
@@ -70,3 +74,30 @@ func ParseTestJson(filePath string) (*Graph, error) {
 	RanddomFeeRate(graph.Channels)
 	return graph, nil
 }
+
+func GetMap(filePath string) map[RouterID]RouterID {
+	resMap := make(map[RouterID]RouterID)
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("os Open error: ", err)
+		return nil
+	}
+	defer f.Close()
+
+	br := bufio.NewReader(f)
+	for {
+		line, _, err := br.ReadLine()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Println("br ReadLine error: ", err)
+			return nil
+		}
+		splitStr := strings.Split(string(line), " ")
+		src, _ := strconv.Atoi(splitStr[0])
+		dest, _ := strconv.Atoi(splitStr[1])
+		resMap[RouterID(src)]=RouterID(dest)
+	}
+	return resMap
+}
+

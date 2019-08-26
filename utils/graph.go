@@ -94,13 +94,21 @@ func CopyNodes(src map[RouterID]*Node) map[RouterID]*Node {
 	for id, node := range src {
 		n := &Node{
 			ID:         RouterID(id),
-			Neighbours: node.Neighbours,
+			Neighbours: copyNei(node.Neighbours),
 			Children:   node.Children,
 			Parents:    node.Parents,
 		}
 		res[id] = n
 	}
 	return res
+}
+
+func copyNei(src map[RouterID]struct{}) map[RouterID]struct{} {
+	resMap := make(map[RouterID]struct{})
+	for nei := range src {
+		resMap[nei] = struct{}{}
+	}
+	return resMap
 }
 
 func (n *Node) RemoveNei(id RouterID) {
@@ -234,7 +242,7 @@ func (g *Graph)AddLink(key string, link *Link) error {
 	return nil
 }
 
-func GetGraphSnapshot(data string) *Graph {
+func GetGraphSnapshot(data string, rmZero bool) *Graph {
 	f, err := os.Open(data + "/finalSets/dynamic/jan2013-lcc-t0.graph_CREDIT_LINKS")
 	if err != nil {
 		fmt.Println("os Open error: ", err)
@@ -275,7 +283,7 @@ func GetGraphSnapshot(data string) *Graph {
 		v2, _ := strconv.ParseFloat(splitted[3], 64)
 		v3, _ := strconv.ParseFloat(splitted[4], 64)
 
-		if v3-v2 !=0 || v2-v1 != 0 {
+		if v3-v2 !=0 || v2-v1 != 0 || rmZero == false{
 			link := &Link{
 				Part1: RouterID(id1),
 				Part2: RouterID(id2),

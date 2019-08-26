@@ -23,7 +23,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "algo",
-			Value: "sp",
+			Value: "ripple",
 			Usage: "algorithm to run or test",
 		},
 		cli.IntFlag{
@@ -43,12 +43,12 @@ func main() {
 				Graph:        g,
 				MaxAddLength: 2,
 				AmountRate:   0.1,
-				NextHopBound: 100,
+				NextHopBound: 50,
 			}
-			channels := utils.CopyChannels(m.Channels)
+		//	channels := utils.CopyChannels(m.Channels)
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
-			//MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
-
+			MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
+			/*
 			bounds := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
 			amtRates := []float64{0.05, 0.1, 0.15, 0.20, 0.25}
 			for _, bound := range bounds {
@@ -60,6 +60,7 @@ func main() {
 				}
 			}
 
+			 */
 		case "sm":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
@@ -152,8 +153,9 @@ func main() {
 				testMany(m, trans[0:1000], []int{100,200, 300, 400, 500, 600, 700, 800, 900, 1000})
 			*/
 		case "ripple":
-			rippleDataTest(tranNum)
+			//rippleDataTest(tranNum)
 			//rippleSnapShotDataTest(tranNum)
+			debugRippleSnapShotDataTest(tranNum)
 		case "lightning":
 			lightningDataTest(tranNum)
 		}

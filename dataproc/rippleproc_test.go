@@ -1,8 +1,10 @@
 package dataproc
 
 import (
+	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/simulator/utils"
+	"math/rand"
 	"sort"
 	"testing"
 )
@@ -29,21 +31,48 @@ func TestGraph_ConvertToSeriesID(t *testing.T) {
 func TestOriginDataSize(t *testing.T) {
 
 	g := utils.GetGraph("../data")
-	for CutOneDegree(2, g) != 0 {
-		spew.Dump(len(g.Nodes))
+	for {
+		delLen := CutOneDegree(2, g)
+		spew.Dump(delLen)
+		if delLen == 0 {
+			break
+		}
 	}
 }
 
 func TestSnapshotData(t *testing.T) {
-	g := utils.GetGraphSnapshot("../data")
-	spew.Dump(len(g.Nodes))
-	for CutOneDegree(2, g) != 0 {
-		spew.Dump(len(g.Nodes))
+	g := utils.GetGraphSnapshot("../data", false)
+	fmt.Printf("node number is %v\n", len(g.Nodes))
+	for {
+		delLen := CutOneDegree(2, g)
+		spew.Dump(delLen)
+		if delLen == 0 {
+			break
+		}
 	}
+//	CutOneDegree(2, g)
+	RemoveZeroEdge(g)
+	fmt.Print("remove zero value done\n")
+	maxComponent := GetMaxComponent(g)
+	spew.Dump(len(maxComponent))
+	//t.Logf("结点个数为%d", len(g.Nodes))
+}
+
+func TestExpotionDistribution(t *testing.T)  {
+	r := rand.New(rand.NewSource(99))
+	i := 0
+	for {
+		spew.Dump(r.ExpFloat64())
+		i++
+		if i == 100 {
+			break
+		}
+	}
+
 }
 
 func TestSnapShotConnection(t *testing.T)  {
-	g := utils.GetGraphSnapshot("../data")
+	g := utils.GetGraphSnapshot("../data", true)
 
 	for CutOneDegree(2, g) != 0 {
 		spew.Dump(len(g.Nodes))
@@ -61,23 +90,11 @@ func TestSnapShotConnection(t *testing.T)  {
 		}
 	}
 
-
 	spew.Dump(len(g.Nodes))
 	spew.Dump(len(part1))
 	spew.Dump(len(partOther))
 	RemoveNotConnectNodes(g, partOther)
-/*
-	spew.Dump(len(g.Nodes))
-	for ; CutOneDegree(2,g) != 0; {
-		t.Logf("one round \n")
-	}
-	spew.Dump(len(g.Nodes))
-
-
- */
 }
-
-
 
 func TestGetTransMaxMin(t *testing.T)  {
 	oriTrans, _ := utils.GenerateTransFromPath("../data/finalSets/static/")

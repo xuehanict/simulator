@@ -41,7 +41,7 @@ type tran struct {
 	val  float64
 }
 
-func GenerateTrans(filePath string) []tran {
+func GenerateTrans(filePath string) []utils.Tran {
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -51,7 +51,7 @@ func GenerateTrans(filePath string) []tran {
 	defer f.Close()
 
 	br := bufio.NewReader(f)
-	trans := make([]tran, 0)
+	trans := make([]utils.Tran, 0)
 	for {
 		line, _, err := br.ReadLine()
 		if err == io.EOF {
@@ -65,13 +65,12 @@ func GenerateTrans(filePath string) []tran {
 		src, _ := strconv.Atoi(splitStr[1])
 		dest, _ := strconv.Atoi(splitStr[2])
 
-		trans = append(trans, tran{
-			src:  src,
-			dest: dest,
-			val:  val,
+		trans = append(trans, utils.Tran{
+			Src:  src,
+			Dest: dest,
+			Val:  val,
 		})
 	}
-
 	return trans
 }
 

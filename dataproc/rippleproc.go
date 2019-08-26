@@ -12,9 +12,9 @@ const (
 	REMAINDER_SAMPLE = 0
 	MAP_SAMPLE       = 1
 
-	ORIGION_CHANNEL   = 1
-	REBALANCE_CHANEL   = 2
-	UNIFORMLY_CHANNEL = 3
+	ORIGION_CHANNEL   = 2
+	REBALANCE_CHANEL   = 3
+	UNIFORMLY_CHANNEL = 4
 )
 
 func CutOneDegree(i int, g *utils.Graph) int {
@@ -38,7 +38,69 @@ func CutOneDegree(i int, g *utils.Graph) int {
 			node.RemoveNei(nToD)
 		}
 	}
+	fmt.Print("clear edge done\n")
 	return len(nodesToDelete)
+}
+
+func RemoveZeroEdge(g *utils.Graph)  {
+	keyToRemove := make([]string,0)
+	for key, link := range g.Channels {
+		if _, ok := g.Nodes[link.Part1]; !ok  {
+			continue
+		}
+		if _, ok := g.Nodes[link.Part2]; !ok  {
+			continue
+		}
+
+		if link.Val1 == 0 && link.Val2 == 0 {
+			delete(g.Nodes[link.Part1].Neighbours, link.Part2)
+			delete(g.Nodes[link.Part2].Neighbours, link.Part1)
+			keyToRemove = append(keyToRemove, key)
+		}
+	}
+
+	for _, key := range keyToRemove {
+		delete(g.Channels, key)
+	}
+}
+
+func GetMaxComponent(g *utils.Graph) []utils.RouterID {
+	allId := make(map[utils.RouterID]struct{})
+	sets := make([][]utils.RouterID, 0)
+	for key := range g.Nodes {
+		allId[key] = struct{}{}
+	}
+
+	count := 0
+	for id := range allId {
+		find := false
+		count ++
+		if count % 100 == 0 {
+			fmt.Print("100 node done\n")
+		}
+		for i, set := range sets {
+			path :=	utils.BfsPath(g.Nodes, id, set[0], false, nil)
+			if path != nil {
+				find = true
+				sets[i] = append(sets[i], id)
+				break
+			}
+		}
+		if !find {
+			newSet := []utils.RouterID{id}
+			sets = append(sets, newSet)
+		}
+
+	}
+
+	maxLen := 0
+	index := 0
+	for i := range sets {
+		if len(sets[i]) > maxLen {
+			index = i
+		}
+	}
+	return sets[index]
 }
 
 func GetNotConnectedNodes(g *utils.Graph)  map[utils.RouterID]struct{} {
@@ -72,6 +134,81 @@ func RemoveNotConnectNodes(g *utils.Graph, toRemove map[utils.RouterID]struct{})
 			node.RemoveNei(nToD)
 		}
 	}
+}
+
+// 使用提前设置好的map作为id映射的依据
+func ConvertToSeriesIDWithMap(balanceDistiWay int, g *utils.Graph,
+	IDMap map[utils.RouterID]utils.RouterID) map[utils.RouterID]utils.RouterID {
+	finalNodes := make(map[utils.RouterID]*utils.Node)
+	for orgID, node := range g.Nodes {
+		finalNodes[IDMap[orgID]] = node
+	}
+
+	for id, node := range finalNodes {
+		newNeis := map[utils.RouterID]struct{}{}
+		for neiID := range node.Neighbours {
+			newNeis[IDMap[neiID]] = struct{}{}
+		}
+		node.Neighbours = newNeis
+		node.ID = id
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	//Convert channels
+	channels := make(map[string]*utils.Link)
+	for _, link := range g.Channels {
+		if _, ok := g.Nodes[link.Part1]; !ok {
+			continue
+		}
+		if _, ok := g.Nodes[link.Part2]; !ok {
+			continue
+		}
+
+		mapped1 := IDMap[link.Part1]
+		mapped2 := IDMap[link.Part2]
+		linkKey := utils.GetLinkKey(mapped1, mapped2)
+		linkAvgValue := (link.Val2 + link.Val1) / 2
+		linkValue := utils.Amount(rand.Float64()) * (link.Val2 + link.Val1)
+		var newLink *utils.Link
+		if mapped1 < mapped2 {
+			newLink = &utils.Link{
+				Part1: mapped1,
+				Part2: mapped2,
+			}
+			switch balanceDistiWay {
+			case ORIGION_CHANNEL:
+				newLink.Val1 = link.Val1
+				newLink.Val2 = link.Val2
+			case REBALANCE_CHANEL:
+				newLink.Val1 = linkAvgValue
+				newLink.Val2 = linkAvgValue
+			case UNIFORMLY_CHANNEL:
+				newLink.Val1 = linkValue
+				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			}
+		} else {
+
+			newLink = &utils.Link{
+				Part1: mapped2,
+				Part2: mapped1,
+			}
+			switch balanceDistiWay {
+			case ORIGION_CHANNEL:
+				newLink.Val1 = link.Val2
+				newLink.Val2 = link.Val1
+			case REBALANCE_CHANEL:
+				newLink.Val1 = linkAvgValue
+				newLink.Val2 = linkAvgValue
+			case UNIFORMLY_CHANNEL:
+				newLink.Val1 = linkValue
+				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			}
+		}
+		channels[linkKey] = newLink
+	}
+	g.Channels = channels
+	g.Nodes = finalNodes
+	return IDMap
 }
 
 func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph) map[utils.RouterID]utils.RouterID {
@@ -170,20 +307,11 @@ func RandomRippleTrans(trans []utils.Tran, IDMap map[utils.RouterID]utils.Router
 
 	for i := 0; len(resTrans) < transNum; i++ {
 		tran := trans[rand.Intn(len(trans))]
-
-		if _, ok := IDMap[utils.RouterID(tran.Src)]; !ok {
-			continue
-		}
-		if _, ok := IDMap[utils.RouterID(tran.Dest)]; !ok {
-			continue
-		}
-
 		if cutMaxMin == true {
 			if tran.Val > max || tran.Val < min {
 				continue
 			}
 		}
-
 		if geneWay == REMAINDER_SAMPLE {
 			newTran := utils.Tran{
 				Src:  tran.Src % len(IDMap),
@@ -192,6 +320,12 @@ func RandomRippleTrans(trans []utils.Tran, IDMap map[utils.RouterID]utils.Router
 			}
 			resTrans = append(resTrans, newTran)
 		} else if geneWay == MAP_SAMPLE {
+			if _, ok := IDMap[utils.RouterID(tran.Src)]; !ok {
+				continue
+			}
+			if _, ok := IDMap[utils.RouterID(tran.Dest)]; !ok {
+				continue
+			}
 			newTran := utils.Tran{
 				Src:  int(IDMap[utils.RouterID(tran.Src)]),
 				Dest: int(IDMap[utils.RouterID(tran.Dest)]),
