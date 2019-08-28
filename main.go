@@ -154,8 +154,9 @@ func main() {
 			*/
 		case "ripple":
 			//rippleDataTest(tranNum)
-			//rippleSnapShotDataTest(tranNum)
-			debugRippleSnapShotDataTest(tranNum)
+			rippleSnapShotDataFlashTest(tranNum)
+			//debugRippleSnapShotDataTest(tranNum)
+			//rippleSnapShotDataSpiderTest(tranNum)
 		case "lightning":
 			lightningDataTest(tranNum)
 		}

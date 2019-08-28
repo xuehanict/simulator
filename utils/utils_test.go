@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"testing"
 )
 
@@ -43,5 +44,8 @@ func TestStoreRipple(t *testing.T) {
 	}
 }
 
+func TestGraph_GetMaxComponent(t *testing.T) {
+	g, _ := ParseTestJson("../data/ten_nodes.json")
+	spew.Dump(g.GetMaxComponent())
 
-
+}

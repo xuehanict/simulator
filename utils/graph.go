@@ -483,3 +483,50 @@ func (g *Graph)LoadDistances(fileName string, dests map[RouterID]struct{}) error
 	}
 	return nil
 }
+
+func (g *Graph)GetMaxComponent() []RouterID {
+	pre := make(map[RouterID]RouterID)
+	// 初始化pre数组，另每个id的上一个id都是本身，表示自己都是根
+	for id := range g.Nodes {
+		pre[id] = id
+	}
+
+	for _, link := range g.Channels {
+		p1, p2 := link.Part1, link.Part2
+		joint(p1, p2, pre)
+	}
+
+	sets := make(map[RouterID][]RouterID)
+	for id := range pre {
+		root := getRoot(id, pre)
+		if _, ok := sets[root]; ok {
+			sets[root] = append(sets[root], id)
+		} else {
+			sets[root] = []RouterID{id}
+		}
+	}
+
+	maxLen, maxRoot := 0, RouterID(-1)
+	for root, set := range sets {
+		if len(set) > maxLen {
+			maxRoot = root
+			maxLen = len(set)
+		}
+	}
+	return sets[maxRoot]
+}
+
+func getRoot(id RouterID, pre map[RouterID]RouterID) RouterID {
+	root := pre[id]
+	for root != pre[root] {
+		root = pre[root]
+	}
+	return root
+}
+
+func joint(p1, p2 RouterID, pre map[RouterID]RouterID)  {
+	root1, root2 := getRoot(p1, pre), getRoot(p2, pre)
+	if root1 != root2 {
+		pre[root2] = root1
+	}
+}

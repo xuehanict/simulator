@@ -15,6 +15,7 @@ const (
 	ORIGION_CHANNEL   = 2
 	REBALANCE_CHANEL   = 3
 	UNIFORMLY_CHANNEL = 4
+	FIX_VALUE_CHANNEL = 5
 )
 
 func CutOneDegree(i int, g *utils.Graph) int {
@@ -32,10 +33,29 @@ func CutOneDegree(i int, g *utils.Graph) int {
 		}
 	}
 	fmt.Printf("remove node done\n")
-
+	/*
 	for _, node := range g.Nodes {
 		for nToD := range nodesToDelete {
 			node.RemoveNei(nToD)
+		}
+	}
+	 */
+	for _, node := range g.Nodes {
+		for n := range node.Neighbours {
+			if _, ok := nodesToDelete[n]; ok {
+				node.RemoveNei(n)
+			}
+		}
+	}
+
+	for key, link :=range g.Channels {
+		p1 := link.Part1
+		p2 := link.Part2
+		if _, ok := g.Nodes[p1]; !ok {
+			delete(g.Channels, key)
+		}
+		if _, ok := g.Nodes[p2]; !ok {
+			delete(g.Channels, key)
 		}
 	}
 	fmt.Print("clear edge done\n")
@@ -43,24 +63,19 @@ func CutOneDegree(i int, g *utils.Graph) int {
 }
 
 func RemoveZeroEdge(g *utils.Graph)  {
-	keyToRemove := make([]string,0)
 	for key, link := range g.Channels {
 		if _, ok := g.Nodes[link.Part1]; !ok  {
-			continue
+			panic(0)
 		}
 		if _, ok := g.Nodes[link.Part2]; !ok  {
-			continue
+			panic(0)
 		}
 
 		if link.Val1 == 0 && link.Val2 == 0 {
 			delete(g.Nodes[link.Part1].Neighbours, link.Part2)
 			delete(g.Nodes[link.Part2].Neighbours, link.Part1)
-			keyToRemove = append(keyToRemove, key)
+			delete(g.Channels, key)
 		}
-	}
-
-	for _, key := range keyToRemove {
-		delete(g.Channels, key)
 	}
 }
 
@@ -90,7 +105,6 @@ func GetMaxComponent(g *utils.Graph) []utils.RouterID {
 			newSet := []utils.RouterID{id}
 			sets = append(sets, newSet)
 		}
-
 	}
 
 	maxLen := 0
@@ -138,7 +152,9 @@ func RemoveNotConnectNodes(g *utils.Graph, toRemove map[utils.RouterID]struct{})
 
 // 使用提前设置好的map作为id映射的依据
 func ConvertToSeriesIDWithMap(balanceDistiWay int, g *utils.Graph,
-	IDMap map[utils.RouterID]utils.RouterID) map[utils.RouterID]utils.RouterID {
+	IDMap map[utils.RouterID]utils.RouterID,
+	chanValue utils.Amount) map[utils.RouterID]utils.RouterID {
+
 	finalNodes := make(map[utils.RouterID]*utils.Node)
 	for orgID, node := range g.Nodes {
 		finalNodes[IDMap[orgID]] = node
@@ -185,6 +201,9 @@ func ConvertToSeriesIDWithMap(balanceDistiWay int, g *utils.Graph,
 			case UNIFORMLY_CHANNEL:
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			case FIX_VALUE_CHANNEL:
+				newLink.Val1 = chanValue/2
+				newLink.Val2 = chanValue/2
 			}
 		} else {
 
@@ -202,6 +221,9 @@ func ConvertToSeriesIDWithMap(balanceDistiWay int, g *utils.Graph,
 			case UNIFORMLY_CHANNEL:
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			case FIX_VALUE_CHANNEL:
+				newLink.Val1 = chanValue/2
+				newLink.Val2 = chanValue/2
 			}
 		}
 		channels[linkKey] = newLink
@@ -211,7 +233,8 @@ func ConvertToSeriesIDWithMap(balanceDistiWay int, g *utils.Graph,
 	return IDMap
 }
 
-func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph) map[utils.RouterID]utils.RouterID {
+func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph,
+	chanValue utils.Amount) map[utils.RouterID]utils.RouterID {
 	i := utils.RouterID(0)
 	IDMap := make(map[utils.RouterID]utils.RouterID)
 	finalNodes := make(map[utils.RouterID]*utils.Node)
@@ -262,6 +285,9 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph) map[utils.RouterID]u
 			case UNIFORMLY_CHANNEL:
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			case FIX_VALUE_CHANNEL:
+				newLink.Val1 = chanValue/2
+				newLink.Val2 = chanValue/2
 			}
 		} else {
 
@@ -279,6 +305,9 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph) map[utils.RouterID]u
 			case UNIFORMLY_CHANNEL:
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
+			case FIX_VALUE_CHANNEL:
+				newLink.Val1 = chanValue/2
+				newLink.Val2 = chanValue/2
 			}
 		}
 		channels[linkKey] = newLink

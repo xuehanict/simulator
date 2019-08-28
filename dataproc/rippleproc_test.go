@@ -43,18 +43,23 @@ func TestOriginDataSize(t *testing.T) {
 func TestSnapshotData(t *testing.T) {
 	g := utils.GetGraphSnapshot("../data", false)
 	fmt.Printf("node number is %v\n", len(g.Nodes))
-	for {
-		delLen := CutOneDegree(2, g)
-		spew.Dump(delLen)
-		if delLen == 0 {
-			break
-		}
-	}
-//	CutOneDegree(2, g)
+	CutOneDegree(2, g)
 	RemoveZeroEdge(g)
 	fmt.Print("remove zero value done\n")
-	maxComponent := GetMaxComponent(g)
-	spew.Dump(len(maxComponent))
+	spew.Dump(len(g.GetMaxComponent()))
+	spew.Dump(len(g.Channels))
+	//t.Logf("结点个数为%d", len(g.Nodes))
+}
+
+func TestJSON(t *testing.T) {
+	g, _ := utils.ParseTestJson("../data/ten_nodes.json")
+	fmt.Printf("node number is %v\n", len(g.Nodes))
+	CutOneDegree(2, g)
+	RemoveZeroEdge(g)
+	fmt.Print("remove zero value done\n")
+	spew.Dump(g.Channels)
+	spew.Dump(g.GetMaxComponent())
+
 	//t.Logf("结点个数为%d", len(g.Nodes))
 }
 
