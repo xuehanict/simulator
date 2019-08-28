@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	testNameMap = map[int]string {
-		dataproc.REMAINDER_SAMPLE: "remainder",
-		dataproc.MAP_SAMPLE: "map",
-		dataproc.REBALANCE_CHANEL: "balance",
+	testNameMap = map[int]string{
+		dataproc.REMAINDER_SAMPLE:  "remainder",
+		dataproc.MAP_SAMPLE:        "map",
+		dataproc.REBALANCE_CHANEL:  "balance",
 		dataproc.UNIFORMLY_CHANNEL: "uniform",
-		dataproc.ORIGION_CHANNEL: "origin",
+		dataproc.ORIGION_CHANNEL:   "origin",
 	}
 )
 
@@ -137,7 +137,7 @@ func rippleSnapShotDataFlashTest(tranNum int) {
 		AmountRate:   0.1,
 		NextHopBound: 10,
 	}
-	MaraEval(m, trans, mara.MARA_MC,logName)
+	MaraEval(m, trans, mara.MARA_MC, logName)
 
 	// flash测试
 	g.Channels = utils.CopyChannels(backChannels)
@@ -183,7 +183,7 @@ func rippleSnapShotDataSpiderTest(tranNum int) {
 	}
 
 	idMap := dataproc.ConvertToSeriesID(channelAssignWay, g, channelAssignValue)
-	trans := dataproc.RandomRippleTrans(oriTrans, idMap, tranNum, transSampleWay, false)
+	trans := dataproc.RandomRippleTrans(oriTrans, idMap, tranNum, transSampleWay, true)
 	backChannels := utils.CopyChannels(g.Channels)
 	fmt.Printf("transaction length is %v", len(trans))
 
@@ -204,7 +204,7 @@ func rippleSnapShotDataSpiderTest(tranNum int) {
 		AmountRate:   0.1,
 		NextHopBound: 20,
 	}
-	MaraEval(m, trans, mara.MARA_MC,logName)
+	MaraEval(m, trans, mara.MARA_MC, logName)
 
 	// flash测试
 	g.Channels = utils.CopyChannels(backChannels)
@@ -333,7 +333,7 @@ func debugRippleSnapShotDataTest(tranNum int) {
 		AmountRate:   0.1,
 		NextHopBound: 20,
 	}
-	MaraEval(m, trans, mara.MARA_MC,logName)
+	MaraEval(m, trans, mara.MARA_MC, logName)
 
 	// flash测试
 	g.Channels = utils.CopyChannels(backChannels)
@@ -358,4 +358,3 @@ func debugRippleSnapShotDataTest(tranNum int) {
 	fmt.Printf("算完所有路径\n")
 	FlashEval(f, trans, logName)
 }
-
