@@ -17,6 +17,18 @@ type Mara struct {
 	NextHopBound int
 	AmountRate   float64
 	MaxAddLength float64
+	PathsBase 	 map[utils.RouterID]map[utils.RouterID][]utils.Path
+}
+
+func NewMara(g *utils.Graph, nextHopBound int, amountRate float64,
+	maxAddLength float64) *Mara {
+	return &Mara{
+		Graph: g,
+		NextHopBound: nextHopBound,
+		AmountRate: amountRate,
+		MaxAddLength: maxAddLength,
+		PathsBase: make(map[utils.RouterID]map[utils.RouterID][]utils.Path),
+	}
 }
 
 const (
@@ -136,49 +148,6 @@ func (m *Mara) MaraMcOPT(startID utils.RouterID) *utils.DAG {
 	//	spew.Dump(ordering)
 	return getDAG(ordering, nodes)
 }
-
-/*
-func (m *Mara) MaraSPE(startID utils.RouterID) *DAG {
-	nodes := m.Nodes
-	if _, ok := m.SPTs[startID]; !ok {
-		fmt.Printf("算最短路\n")
-		m.SPTs[startID] = dijkstra(m.Nodes, startID)
-		fmt.Printf("算完最短路\n")
-	}
-	spt := m.SPTs[startID]
-	S := make(map[utils.RouterID]struct{})
-	S[startID] = struct{}{}
-
-	ordering := make([]utils.RouterID, 1)
-	ordering[0] = startID
-
-	for {
-		if len(ordering) == len(nodes) {
-			break
-		}
-		v := utils.RouterID(-1)
-		T := computeT(spt, S)
-		largestD := 0
-		for vtx := range T {
-			tmpConn := 0
-			for n := range nodes[vtx].Neighbours {
-				if _, ok := S[n]; ok {
-					tmpConn++
-				}
-			}
-			if tmpConn > largestD {
-				largestD = tmpConn
-				v = vtx
-			}
-		}
-		fmt.Printf("ordering %v\n", len(S))
-		ordering = append(ordering, v)
-		S[v] = struct{}{}
-	}
-	//	spew.Dump(ordering)
-	return getDAG(ordering, nodes)
-}
-*/
 
 // 优化过的MaraSPE，时间复杂度降低了很多
 func (m *Mara) MaraSpeOpt(startID utils.RouterID) *utils.DAG {
@@ -328,7 +297,6 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 		}
 		sort.Sort(sorter)
 
-		// TODO(xuehan) 判断长度
 		if sorter.Len() > m.NextHopBound {
 			sorter.parents = sorter.parents[0:m.NextHopBound]
 		}
@@ -336,7 +304,7 @@ func (m *Mara) nextHop(curPath []utils.RouterID, current,
 
 			val := utils.GetLinkValue(current, pnode, m.Channels)
 			if val < amount*utils.Amount(amtRate) ||
-				float64(len(curPath)) > maxLength {
+				float64(len(curPath)) > (maxLength - m.Distance[dest][current]) {
 				continue
 			}
 			metric.ProbeMessgeNum++
@@ -430,9 +398,11 @@ func (m *Mara) SendPaymentWithBond(src, dest utils.RouterID, algo int,
 			Description: fmt.Sprintf("update link failed :%v", err.Error()),
 		}
 	}
+	m.storePathsToCache(src,dest,routes)
 	return len(routes), len(selectedRoutes), metric, nil
 }
 
+// 给每条路径分配一定的钱
 func (m *Mara) allocMoney(routes []utils.Path,
 	amount utils.Amount) ([]utils.Amount, error) {
 
@@ -476,6 +446,7 @@ func (m *Mara) allocMoney(routes []utils.Path,
 	return m.linearProgram(routes, channelIndexs, routeMins, channelVals, amount)
 }
 
+// 进行线性规划运算
 func (m *Mara) linearProgram(
 	routes []utils.Path,
 	channelIndexs map[string]int,
@@ -564,6 +535,7 @@ func (m *Mara) linearProgram(
 	return result, err
 }
 
+// 基于前面得到的序列，构建DAG
 func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*utils.Node) *utils.DAG {
 
 	mapOrdering := make(map[utils.RouterID]int, len(ordering))
@@ -590,6 +562,7 @@ func getDAG(ordering []utils.RouterID, nodes map[utils.RouterID]*utils.Node) *ut
 	return dag
 }
 
+// 只是得到支付的路径和分配的金额，但是不进行真正的支付行为
 func (m *Mara) TryPay(src, dest utils.RouterID, algo int,
 	amount utils.Amount) ([]utils.Path, []utils.Amount, error) {
 	metric := &utils.Metrics{}
@@ -636,3 +609,26 @@ func (m *Mara) TryPay(src, dest utils.RouterID, algo int,
 	}
 	return selectedRoutes, selectedResult, nil
 }
+
+// 从路径仓库中取出之前得到的路径，以重复利用
+func (m *Mara) getPathsFromCache(src,dest utils.RouterID) []utils.Path {
+	if cacheMap, ok := m.PathsBase[src]; ok {
+		if paths, ok1 := cacheMap[dest]; ok1 {
+			return paths
+		}
+	}
+	return nil
+}
+
+// 将路径存入到路径仓库中，以备以后继续使用，以减少probe的overhead
+func (m *Mara) storePathsToCache(src, dest utils.RouterID, paths []utils.Path)  {
+	if _, ok := m.PathsBase[src]; !ok {
+		m.PathsBase[src] = make(map[utils.RouterID][]utils.Path)
+	}
+	m.PathsBase[src][dest] = paths
+}
+
+func (m *Mara)clearPathsCache(src, dest utils.RouterID)  {
+	delete(m.PathsBase[src], dest)
+}
+

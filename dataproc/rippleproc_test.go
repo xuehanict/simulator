@@ -23,7 +23,7 @@ func TestGraph_ConvertToSeriesID(t *testing.T) {
 	g, _ := utils.ParseTestJson("../data/ten_nodes.json")
 	CutOneDegree(2,g)
 	CutOneDegree(2,g)
-	spew.Dump(ConvertToSeriesID(ORIGION_CHANNEL, g))
+	spew.Dump(ConvertToSeriesID(ORIGION_CHANNEL, g, 0))
 	spew.Dump(g.Nodes)
 	spew.Dump(g.Channels)
 }
@@ -46,7 +46,9 @@ func TestSnapshotData(t *testing.T) {
 	CutOneDegree(2, g)
 	RemoveZeroEdge(g)
 	fmt.Print("remove zero value done\n")
-	spew.Dump(len(g.GetMaxComponent()))
+	maxComponent := g.GetMaxComponent()
+	spew.Dump(len(maxComponent))
+	RemainNodes(maxComponent, g)
 	spew.Dump(len(g.Channels))
 	//t.Logf("结点个数为%d", len(g.Nodes))
 }
@@ -112,4 +114,36 @@ func TestGetTransMaxMin(t *testing.T)  {
 	t.Logf("min is %v", values[len(values)/10*1])
 	t.Logf("max is %v", values[len(values) - len(values)/10])
 
+}
+
+func TestAnalyze(t *testing.T) {
+	trans, _ := utils.GenerateTransFromPath("../data/finalSets/static/")
+	destNum := make(map[utils.RouterID]int)
+	for _, tran := range trans {
+		if _, ok := destNum[utils.RouterID(tran.Dest)]; ok {
+			destNum[utils.RouterID(tran.Dest)] = destNum[utils.RouterID(tran.Dest)] + 1
+		} else {
+			destNum[utils.RouterID(tran.Dest)] = 1
+		}
+	}
+	fmt.Printf("平均每个dest有：%v比交易\n", len(trans)/len(destNum))
+
+	distri := make(map[int]int)
+	for _, num := range destNum {
+		if _, ok := distri[num]; ok {
+			distri[num] = distri[num] + 1
+		} else {
+			distri[num] = 1
+		}
+	}
+//	spew.Dump(distri)
+
+
+	less10 := 0
+	for bishu, destshu := range distri {
+		if bishu < 10000{
+			less10 = less10 + bishu * destshu
+		}
+	}
+	spew.Dump(less10)
 }

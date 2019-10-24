@@ -83,25 +83,6 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 			totalFees += metric.Fees
 			successVolume += tran.Val
 
-			/*
-			log.WithFields(logrus.Fields{
-				"result":           true,
-				"success":          success,
-				"total":            total,
-				"from":             tran.Src,
-				"to":               tran.Dest,
-				"amt":              tran.Val,
-				"pathN":            pathN,
-				"totalVolumn":      totalVolume,
-				"successVolumn":    successVolume,
-				"usedN":            usedN,
-				"totalProbe":       totalProbe,
-				"averageMaxLen":    totalMaxLength / success,
-				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / successVolume,
-			}).Trace("execute a payment.")
-
-			 */
 		} else {
 			if payError, ok := err.(*mara.PaymentError); ok {
 				switch payError.Code {
@@ -111,25 +92,6 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 					allcFailed++
 				}
 			}
-			/*
-			log.WithFields(logrus.Fields{
-				"result":           false,
-				"error":            err.Error(),
-				"success":          success,
-				"total":            total,
-				"from":             tran.Src,
-				"to":               tran.Dest,
-				"amt":              tran.Val,
-				"pathN":            pathN,
-				"usedN":            usedN,
-				"totalProbe":       totalProbe,
-				"averageMaxLen":    totalMaxLength / success,
-				"averageOperation": float64(totalOperation) / success,
-				"averageFees":      float64(totalFees) / successVolume,
-				"totalVolumn":      totalVolume,
-				"successVolumn":    successVolume,
-			}).Trace("execute a payment.")
-			 */
 		}
 		log.WithFields(logrus.Fields{
 			"success":          success,
@@ -148,22 +110,6 @@ func MaraEval(m *mara.Mara, trans []utils.Tran, algo int, other string) {
 
 	// 执行完一轮交易后，需要重新将备份的channel信息拷贝给m
 	m.Channels = utils.CopyChannels(backupChannelBase)
-
-	/*
-	log.WithFields(logrus.Fields{
-		"pathLengthBound":  m.MaxAddLength,
-		"amountLBrate":     m.AmountRate,
-		"averageAllpath":   pathNumTotal / success,
-		"averageUsedPath":  usedNumTotal / success,
-		"totalProbe":       totalProbe,
-		"averageFees":      float64(totalFees) / successVolume,
-		"averageOperation": float64(totalOperation) / success,
-		"averageMaxLen":    totalMaxLength / success,
-		"totalVolumn":      totalVolume,
-		"successVolumn":    successVolume,
-		"sussessRate":      success / total,
-	}).Infof("a round test result shows")
-	 */
 }
 
 func SpiderEval(s *spider.Spider, trans []utils.Tran, other string) {

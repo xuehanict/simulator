@@ -164,28 +164,30 @@ func rippleSnapShotDataFlashTest(tranNum int) {
 
 func rippleSnapShotDataSpiderTest(tranNum int) {
 	channelAssignWay := dataproc.FIX_VALUE_CHANNEL
-	channelAssignValue := utils.Amount(30000)
+	channelAssignValue := utils.Amount(10000)
 	transSampleWay := dataproc.REMAINDER_SAMPLE
 	logName := fmt.Sprintf("-rippleSnapshot-spidertopo-%s-%s",
 		testNameMap[channelAssignWay], testNameMap[transSampleWay])
 
 	fmt.Printf("start test\n")
 	g := utils.GetGraphSnapshot("./data", true)
-	utils.RanddomFeeRate(g.Channels)
 	oriTrans, _ := utils.GenerateTransFromPath("data/finalSets/static/")
 	fmt.Printf("origin trans length is %v\n", len(oriTrans))
 
 	// 对图进行预处理，先删除度为1的结点， 再删除不连通的小部分, 最后再将序号再从0开始编排
-	for {
-		if dataproc.CutOneDegree(2, g) == 0 {
-			break
-		}
-	}
+	dataproc.CutOneDegree(2, g)
+	dataproc.RemoveZeroEdge(g)
+
+	// 获取最大component，然后进行裁剪
+	largeComponent := g.GetMaxComponent()
+	dataproc.RemainNodes(largeComponent, g)
 
 	idMap := dataproc.ConvertToSeriesID(channelAssignWay, g, channelAssignValue)
 	trans := dataproc.RandomRippleTrans(oriTrans, idMap, tranNum, transSampleWay, true)
 	backChannels := utils.CopyChannels(g.Channels)
 	fmt.Printf("transaction length is %v", len(trans))
+
+	/*
 
 	// sm测试
 	sm := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
@@ -196,16 +198,12 @@ func rippleSnapShotDataSpiderTest(tranNum int) {
 	sp := spider.NewSpider(g, spider.WATERFIILING, 4)
 	SpiderEval(sp, trans, logName)
 
+	 */
 	// mara测试
 	g.Channels = utils.CopyChannels(backChannels)
-	m := &mara.Mara{
-		Graph:        g,
-		MaxAddLength: 2,
-		AmountRate:   0.1,
-		NextHopBound: 20,
-	}
+	m := mara.NewMara(g, 4, 0.1, 2)
 	MaraEval(m, trans, mara.MARA_MC, logName)
-
+/*
 	// flash测试
 	g.Channels = utils.CopyChannels(backChannels)
 	f := flash.NewFlash(g, 20, true)
@@ -227,6 +225,8 @@ func rippleSnapShotDataSpiderTest(tranNum int) {
 	wg.Wait()
 	fmt.Printf("算完所有路径\n")
 	FlashEval(f, trans, logName)
+ */
+
 }
 
 func lightningDataTest(tranNum int) {

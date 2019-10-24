@@ -74,7 +74,7 @@ func getSummary (fileName string) (*logSummary, error) {
 }
 
 func main() {
-	filePath := "logs/unbalance_remainder_log/"
+	filePath := "./"
 	files, err := ioutil.ReadDir(filePath)
 	if err != nil {
 		fmt.Printf("faced error :%v\n", err)
@@ -112,8 +112,14 @@ func main() {
 		} else { continue }
 	}
 
-
-	tranNumArray := []int{1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000}
+	tranNumArray := make([]int, 0)
+	i := 1
+	for i <= 50000 {
+		if i%1000 == 0  {
+			tranNumArray = append(tranNumArray, i)
+		}
+		i++
+	}
 	// 先输出成功率
 	fileObj,err := os.OpenFile("log-res.txt",os.O_RDWR|os.O_CREATE|os.O_TRUNC,0644)
 	if err!= nil {

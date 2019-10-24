@@ -234,13 +234,35 @@ func (g *Graph)AddNode(id RouterID) {
 	}
 }
 
-func (g *Graph)AddLink(key string, link *Link) error {
+// 图增加link，p1、p2是两端id，但是要求p1<p2
+func (g *Graph)AddLink(p1, p2 RouterID) error {
+	key := GetLinkKey(p1, p2)
+	link := &Link{
+		Part1: p1,
+		Part2: p2,
+	}
+	if _, ok := g.Nodes[p1]; !ok {
+		return fmt.Errorf("node %v not exsist", p1)
+	}
+	if _, ok := g.Nodes[p2]; !ok {
+		return fmt.Errorf("node %v not exsist", p2)
+	}
+	g.Nodes[p1].Neighbours[p2] = struct{}{}
+	g.Nodes[p2].Neighbours[p1] = struct{}{}
+	g.Channels[key] = link
+	return nil
+}
+
+
+func (g *Graph)addLink(key string, link *Link) error {
 	if _, ok := g.Channels[key]; ok {
 		return fmt.Errorf("link exsist")
 	}
 	g.Channels[key] = link
 	return nil
 }
+
+
 
 func GetGraphSnapshot(data string, rmZero bool) *Graph {
 	f, err := os.Open(data + "/finalSets/dynamic/jan2013-lcc-t0.graph_CREDIT_LINKS")

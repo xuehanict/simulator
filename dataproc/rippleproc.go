@@ -25,21 +25,30 @@ func CutOneDegree(i int, g *utils.Graph) int {
 			nodesToDelete[n.ID] = struct{}{}
 		}
 	}
-
+	l := removeNodes(nodesToDelete, g)
 	fmt.Printf("node to delete length is %v\n", len(nodesToDelete))
+	return l
+}
+
+func RemainNodes(remainning []utils.RouterID, g *utils.Graph)  {
+	nodesToDelete := make(map[utils.RouterID]struct{})
+	for id := range g.Nodes {
+		nodesToDelete[id] = struct{}{}
+	}
+
+	for _, rid := range remainning {
+		delete(nodesToDelete, rid)
+	}
+	removeNodes(nodesToDelete, g)
+}
+
+func removeNodes(nodesToDelete map[utils.RouterID]struct{}, g *utils.Graph) int {
 	for id := range g.Nodes {
 		if _, ok := nodesToDelete[id]; ok {
 			delete(g.Nodes, id)
 		}
 	}
 	fmt.Printf("remove node done\n")
-	/*
-	for _, node := range g.Nodes {
-		for nToD := range nodesToDelete {
-			node.RemoveNei(nToD)
-		}
-	}
-	 */
 	for _, node := range g.Nodes {
 		for n := range node.Neighbours {
 			if _, ok := nodesToDelete[n]; ok {
@@ -79,6 +88,7 @@ func RemoveZeroEdge(g *utils.Graph)  {
 	}
 }
 
+// 得到图的最大连通分量
 func GetMaxComponent(g *utils.Graph) []utils.RouterID {
 	allId := make(map[utils.RouterID]struct{})
 	sets := make([][]utils.RouterID, 0)
@@ -274,6 +284,7 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph,
 			newLink = &utils.Link{
 				Part1: mapped1,
 				Part2: mapped2,
+				FeeRate: link.FeeRate,
 			}
 			switch balanceDistiWay {
 			case ORIGION_CHANNEL:
@@ -286,8 +297,10 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph,
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
 			case FIX_VALUE_CHANNEL:
-				newLink.Val1 = chanValue/2
-				newLink.Val2 = chanValue/2
+				//newLink.Val1 = chanValue/2
+				//newLink.Val2 = chanValue/2
+				newLink.Val1 = utils.Amount(rand.Float64()) * utils.Amount(chanValue)
+				newLink.Val2 = utils.Amount(chanValue) - newLink.Val1
 			}
 		} else {
 
@@ -306,8 +319,10 @@ func ConvertToSeriesID(balanceDistiWay int, g *utils.Graph,
 				newLink.Val1 = linkValue
 				newLink.Val2 = link.Val2 + link.Val1 - linkValue
 			case FIX_VALUE_CHANNEL:
-				newLink.Val1 = chanValue/2
-				newLink.Val2 = chanValue/2
+				//newLink.Val1 = chanValue/2
+				//newLink.Val2 = chanValue/2
+				newLink.Val1 = utils.Amount(rand.Float64()) * utils.Amount(chanValue)
+				newLink.Val2 = utils.Amount(chanValue) - newLink.Val1
 			}
 		}
 		channels[linkKey] = newLink

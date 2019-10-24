@@ -39,28 +39,10 @@ func main() {
 		switch algo {
 		case "mara":
 			g := utils.GetGraph("./data")
-			m := &mara.Mara{
-				Graph:        g,
-				MaxAddLength: 2,
-				AmountRate:   0.1,
-				NextHopBound: 50,
-			}
-			//	channels := utils.CopyChannels(m.Channels)
+			m := mara.NewMara(g,2,0.1, 50)
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
-			/*
-				bounds := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
-				amtRates := []float64{0.05, 0.1, 0.15, 0.20, 0.25}
-				for _, bound := range bounds {
-					for _, amtRate := range amtRates {
-						m.NextHopBound = bound
-						m.Channels = utils.CopyChannels(channels)
-						m.AmountRate = amtRate
-						MaraEval(m, trans[0:tranNum], mara.MARA_MC, "tr-2")
-					}
-				}
 
-			*/
 		case "sm":
 			g := utils.GetGraph("./data")
 			s := landmark.NewSM(g, []utils.RouterID{5, 38, 13})
@@ -74,12 +56,7 @@ func main() {
 			SWEval(s, trans[0:tranNum], "tr-2")
 		case "dijk":
 			g := utils.GetGraph("./data")
-			m := &mara.Mara{
-				Graph:        g,
-				MaxAddLength: 6,
-				AmountRate:   0.05,
-				NextHopBound: 100,
-			}
+			m := mara.NewMara(g,2,0.1, 50)
 			trans := utils.GenerateTrans("./data/finalSets/static/sampleTr-2.txt")
 			MaraEval(m, trans[0:tranNum], mara.MARA_SPT, "tr-2")
 
